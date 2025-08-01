@@ -1,0 +1,52 @@
+#!/usr/bin/env node
+// Auto-update dashboard script
+// Run this after generating new test results to update the dashboard
+
+import fs from 'fs';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
+
+async function updateDashboard() {
+    console.log('🔄 Updating dashboard with latest results...');
+    
+    try {
+        // Run the dashboard creation script
+        await execAsync('node create-autoload-dashboard.js');
+        
+        // Update the index page with the latest file info
+        const files = fs.readdirSync('.')
+            .filter(file => file.match(/^(api-responses|multi-endpoint-api-responses)-\d+\.json$/))
+            .map(file => ({
+                name: file,
+                time: fs.statSync(file).mtime.getTime(),
+                size: fs.statSync(file).size
+            }))
+            .sort((a, b) => b.time - a.time);
+
+        if (files.length > 0) {
+            const latestFile = files[0];
+            
+            console.log(`✅ Dashboard updated successfully!`);
+            console.log(`📊 Latest results: ${latestFile.name}`);
+            console.log(`📅 Generated: ${new Date(latestFile.time).toLocaleString()}`);
+            console.log(`📄 File size: ${(latestFile.size / 1024).toFixed(1)} KB`);
+            console.log(`🌐 Open: results-dashboard-autoload.html`);
+            
+            // Optionally open the dashboard in the browser
+            if (process.argv.includes('--open')) {
+                console.log('🚀 Opening dashboard in browser...');
+                const opener = process.platform === 'darwin' ? 'open' : 
+                              process.platform === 'win32' ? 'start' : 'xdg-open';
+                exec(`${opener} results-dashboard-autoload.html`);
+            }
+        }
+        
+    } catch (error) {
+        console.error('❌ Error updating dashboard:', error.message);
+        process.exit(1);
+    }
+}
+
+updateDashboard();
