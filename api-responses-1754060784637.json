@@ -1,0 +1,595 @@
+{
+  "timestamp": "2025-08-01T15:06:24.637Z",
+  "totalTests": 9,
+  "endpoint": {
+    "endpoint": {
+      "url": "https://developer.globalpay.com/api/disputes#/Challenge/challengeDispute"
+    },
+    "requestDetails": {
+      "url": "https://apis.sandbox.globalpay.com/ucp/disputes/DIS_SAND_abcd1236/challenge",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer DCKbRy6gtN6gWJI2ja0B7e3POtbb",
+        "content-type": "application/json",
+        "x-gp-version": "2021-03-22"
+      },
+      "body": {
+        "documents": [
+          {
+            "b64_content": "R0lGODlhigPCAXAAACwAAAAAigPCAYf///8AQnv="
+          }
+        ]
+      }
+    },
+    "credentials": {
+      "accessToken": "Bearer DCKbRy6gtN6gWJI2ja0B7e3POtbb",
+      "apiVersion": "2021-03-22",
+      "baseUrl": "https://apis.sandbox.globalpay.com"
+    },
+    "statusCodes": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "500",
+      "501",
+      "502",
+      "504"
+    ],
+    "responses": [
+      {
+        "statusCode": "200",
+        "request": {
+          "url": "https://apis.sandbox.globalpay.com/ucp/disputes/DIS_SAND_abcd1236/challenge",
+          "method": "POST",
+          "headers": {
+            "accept": "application/json",
+            "authorization": "Bearer DCKbRy6gtN6gWJI2ja0B7e3POtbb",
+            "content-type": "application/json",
+            "x-gp-version": "2021-03-22"
+          },
+          "body": "{\"documents\":[{\"b64_content\":\"R0lGODlhigPCAXAAACwAAAAAigPCAYf///8AQnv=\"}]}"
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "headers": {
+            "accept": "application/json",
+            "access-control-allow-credentials": "true",
+            "access-control-allow-headers": "origin, apikey, apienv, authorization, Authorization, x-requested-with, accept, content-type, username, x-gp-version,x-gp-library,X-GP-Idempotency,x-gp-idempotency,X-GP-IDEMPOTENCY",
+            "access-control-allow-methods": "GET, PUT, POST, DELETE, PATCH, OPTIONS",
+            "access-control-allow-origin": "",
+            "access-control-max-age": "3628800",
+            "alt-svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000",
+            "cache-control": "no-cache, no-store, must-revalidate",
+            "connection": "keep-alive",
+            "content-encoding": "gzip",
+            "content-type": "application/json",
+            "date": "Fri, 01 Aug 2025 15:06:14 GMT",
+            "pragma": "no-cache",
+            "server": "istio-envoy",
+            "strict-transport-security": "max-age=31536000; includeSubDomains",
+            "transfer-encoding": "chunked",
+            "via": "1.1 google",
+            "x-content-type-options": "nosniff",
+            "x-envoy-decorator-operation": "v1-rpt-harness-test-central.gpapi.svc.cluster.local:8080/*",
+            "x-envoy-upstream-service-time": "4",
+            "x-frame-options": "DENY",
+            "x-gp-version": "2021-03-22",
+            "x_global_transaction_id": "rrt-073846ac-4b9b-4676-9594-3c96ba41a6b28ka1w",
+            "x_global_transaction_id_source": "gp-apigee"
+          },
+          "body": {
+            "id": "DIS_SAND_abcd1236",
+            "status": "UNDER_REVIEW",
+            "stage": "SECOND_CHARGEBACK",
+            "amount": "2000",
+            "currency": "USD",
+            "reason_code": "137",
+            "reason_description": "Cancelled Merchandise/Services",
+            "result": "PENDING",
+            "documents": [
+              {
+                "id": "DOC_MyEvidence_234234AVCDE-0"
+              }
+            ],
+            "action": {
+              "id": "ACT_fn65lAlJNpvqqVJbOZKvbY9bSNjEeq",
+              "type": "CHALLENGE",
+              "time_created": "2025-08-01T15:06:14.014Z",
+              "result_code": "SUCCESS",
+              "app_id": "U1lRHKomEn7DN907RCDPxVhyMfiMLcfy",
+              "app_name": "dev_portal_demo"
+            }
+          },
+          "expected": "200",
+          "matched": true
+        },
+        "timestamp": "2025-08-01T15:06:14.041Z"
+      },
+      {
+        "statusCode": "400",
+        "request": {
+          "url": "https://apis.sandbox.globalpay.com/ucp/disputes/DIS_SAND_abcd1236/challenge",
+          "method": "POST",
+          "headers": {
+            "accept": "application/json",
+            "authorization": "Bearer DCKbRy6gtN6gWJI2ja0B7e3POtbb",
+            "content-type": "application/json",
+            "x-gp-version": "2021-03-22"
+          },
+          "body": "{\"documents\":[{\"invalid_document_type\":\"INVALID_TYPE\",\"missing_required_field\":null}],\"invalid_field\":\"invalid_data\"}"
+        },
+        "response": {
+          "status": 400,
+          "statusText": "Bad Request",
+          "headers": {
+            "accept": "application/json",
+            "access-control-allow-credentials": "true",
+            "access-control-allow-headers": "origin, apikey, apienv, authorization, Authorization, x-requested-with, accept, content-type, username, x-gp-version,x-gp-library,X-GP-Idempotency,x-gp-idempotency,X-GP-IDEMPOTENCY",
+            "access-control-allow-methods": "GET, PUT, POST, DELETE, PATCH, OPTIONS",
+            "access-control-allow-origin": "",
+            "access-control-max-age": "3628800",
+            "cache-control": "no-cache, no-store, must-revalidate",
+            "connection": "keep-alive",
+            "content-encoding": "gzip",
+            "content-type": "application/json",
+            "date": "Fri, 01 Aug 2025 15:06:14 GMT",
+            "pragma": "no-cache",
+            "strict-transport-security": "max-age=31536000; includeSubDomains",
+            "transfer-encoding": "chunked",
+            "x-content-type-options": "nosniff",
+            "x-frame-options": "DENY",
+            "x-gp-version": "2021-03-22",
+            "x_global_transaction_id": "rrt-04fab385-8574-47cb-ab19-21a42950cc29mu3aq",
+            "x_global_transaction_id_source": "gp-apigee"
+          },
+          "body": {
+            "error_code": "MANDATORY_DATA_MISSING",
+            "detailed_error_code": "40065",
+            "detailed_error_description": "Unable to challenge as No document provided with the request"
+          },
+          "expected": "400",
+          "matched": true
+        },
+        "timestamp": "2025-08-01T15:06:14.516Z"
+      },
+      {
+        "statusCode": "401",
+        "request": {
+          "url": "https://apis.sandbox.globalpay.com/ucp/disputes/DIS_SAND_abcd1236/challenge",
+          "method": "POST",
+          "headers": {
+            "accept": "application/json",
+            "authorization": "Bearer INVALID_401_TEST_TOKEN",
+            "content-type": "application/json",
+            "x-gp-version": "2021-03-22"
+          },
+          "body": "{\"documents\":[{\"b64_content\":\"R0lGODlhigPCAXAAACwAAAAAigPCAYf///8AQnv=\"}]}"
+        },
+        "response": {
+          "status": 401,
+          "statusText": "Not Authenticated",
+          "headers": {
+            "accept": "application/json",
+            "access-control-allow-credentials": "true",
+            "access-control-allow-headers": "origin, apikey, apienv, authorization, Authorization, x-requested-with, accept, content-type, username, x-gp-version,x-gp-library,X-GP-Idempotency,x-gp-idempotency,X-GP-IDEMPOTENCY",
+            "access-control-allow-methods": "GET, PUT, POST, DELETE, PATCH, OPTIONS",
+            "access-control-allow-origin": "",
+            "access-control-max-age": "3628800",
+            "cache-control": "no-cache, no-store, must-revalidate",
+            "connection": "keep-alive",
+            "content-encoding": "gzip",
+            "content-type": "application/json",
+            "date": "Fri, 01 Aug 2025 15:06:14 GMT",
+            "pragma": "no-cache",
+            "strict-transport-security": "max-age=31536000; includeSubDomains",
+            "transfer-encoding": "chunked",
+            "x-content-type-options": "nosniff",
+            "x-frame-options": "DENY",
+            "x-gp-version": "2021-03-22",
+            "x_global_transaction_id": "rrt-37cf96ac-e208-41d6-9fb6-bbee39a0f287hkn43",
+            "x_global_transaction_id_source": "gp-apigee"
+          },
+          "body": {
+            "error_code": "NOT_AUTHENTICATED",
+            "detailed_error_code": "40001",
+            "detailed_error_description": "Invalid Access Token"
+          },
+          "expected": "401",
+          "matched": true
+        },
+        "timestamp": "2025-08-01T15:06:14.886Z"
+      },
+      {
+        "statusCode": "403",
+        "request": {
+          "url": "https://apis.sandbox.globalpay.com/ucp/disputes/DIS_SAND_abcd1236/challenge",
+          "method": "POST",
+          "headers": {
+            "accept": "application/json",
+            "authorization": "Bearer INVALID_403_TEST_TOKEN",
+            "content-type": "application/json",
+            "x-gp-version": "2021-03-22",
+            "x-test-scenario": "forbidden_access"
+          },
+          "body": "{\"documents\":[{\"b64_content\":\"R0lGODlhigPCAXAAACwAAAAAigPCAYf///8AQnv=\"}]}"
+        },
+        "response": {
+          "status": 401,
+          "statusText": "Not Authenticated",
+          "headers": {
+            "accept": "application/json",
+            "access-control-allow-credentials": "true",
+            "access-control-allow-headers": "origin, apikey, apienv, authorization, Authorization, x-requested-with, accept, content-type, username, x-gp-version,x-gp-library,X-GP-Idempotency,x-gp-idempotency,X-GP-IDEMPOTENCY",
+            "access-control-allow-methods": "GET, PUT, POST, DELETE, PATCH, OPTIONS",
+            "access-control-allow-origin": "",
+            "access-control-max-age": "3628800",
+            "cache-control": "no-cache, no-store, must-revalidate",
+            "connection": "keep-alive",
+            "content-encoding": "gzip",
+            "content-type": "application/json",
+            "date": "Fri, 01 Aug 2025 15:06:17 GMT",
+            "pragma": "no-cache",
+            "strict-transport-security": "max-age=31536000; includeSubDomains",
+            "transfer-encoding": "chunked",
+            "x-content-type-options": "nosniff",
+            "x-frame-options": "DENY",
+            "x-gp-version": "2021-03-22",
+            "x_global_transaction_id": "rrt-913832c2-59c6-4c80-affa-5c2c02f491afsyws4",
+            "x_global_transaction_id_source": "gp-apigee"
+          },
+          "body": {
+            "error_code": "NOT_AUTHENTICATED",
+            "detailed_error_code": "40001",
+            "detailed_error_description": "Invalid Access Token"
+          },
+          "expected": "403",
+          "matched": false
+        },
+        "timestamp": "2025-08-01T15:06:17.261Z"
+      },
+      {
+        "statusCode": "404",
+        "request": {
+          "url": "https://apis.sandbox.globalpay.com/ucp/disputes/DIS_STATIC_404_TEST/challenge",
+          "method": "POST",
+          "headers": {
+            "accept": "application/json",
+            "authorization": "Bearer DCKbRy6gtN6gWJI2ja0B7e3POtbb",
+            "content-type": "application/json",
+            "x-gp-version": "2021-03-22"
+          },
+          "body": "{\"documents\":[{\"b64_content\":\"R0lGODlhigPCAXAAACwAAAAAigPCAYf///8AQnv=\"}]}"
+        },
+        "response": {
+          "status": 400,
+          "statusText": "Bad Request",
+          "headers": {
+            "accept": "application/json",
+            "access-control-allow-credentials": "true",
+            "access-control-allow-headers": "origin, apikey, apienv, authorization, Authorization, x-requested-with, accept, content-type, username, x-gp-version,x-gp-library,X-GP-Idempotency,x-gp-idempotency,X-GP-IDEMPOTENCY",
+            "access-control-allow-methods": "GET, PUT, POST, DELETE, PATCH, OPTIONS",
+            "access-control-allow-origin": "",
+            "access-control-max-age": "3628800",
+            "cache-control": "no-cache, no-store, must-revalidate",
+            "connection": "keep-alive",
+            "content-encoding": "gzip",
+            "content-type": "application/json",
+            "date": "Fri, 01 Aug 2025 15:06:17 GMT",
+            "pragma": "no-cache",
+            "strict-transport-security": "max-age=31536000; includeSubDomains",
+            "transfer-encoding": "chunked",
+            "x-content-type-options": "nosniff",
+            "x-frame-options": "DENY",
+            "x-gp-version": "2021-03-22",
+            "x_global_transaction_id": "rrt-416c10c1-2ee0-46e6-ad10-f5c93a1e84773i747",
+            "x_global_transaction_id_source": "gp-apigee"
+          },
+          "body": {
+            "error_code": "INVALID_DISPUTE_ACTION",
+            "detailed_error_code": "40060",
+            "detailed_error_description": "117,Unable to challenge for that id. Please check the Case id again."
+          },
+          "expected": "404",
+          "matched": false
+        },
+        "timestamp": "2025-08-01T15:06:17.749Z"
+      },
+      {
+        "statusCode": "500",
+        "request": {
+          "url": "https://apis.sandbox.globalpay.com/ucp/disputes/DIS_SAND_abcd1236/challenge",
+          "method": "POST",
+          "headers": {
+            "accept": "application/json",
+            "authorization": "Bearer DCKbRy6gtN6gWJI2ja0B7e3POtbb",
+            "content-type": "application/json",
+            "x-gp-version": "2021-03-22",
+            "x-test-scenario": "server_error_500",
+            "x-simulate-error": "500"
+          },
+          "body": "{\"documents\":[{\"b64_content\":\"R0lGODlhigPCAXAAACwAAAAAigPCAYf///8AQnv=\"}]}"
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "headers": {
+            "accept": "application/json",
+            "access-control-allow-credentials": "true",
+            "access-control-allow-headers": "origin, apikey, apienv, authorization, Authorization, x-requested-with, accept, content-type, username, x-gp-version,x-gp-library,X-GP-Idempotency,x-gp-idempotency,X-GP-IDEMPOTENCY",
+            "access-control-allow-methods": "GET, PUT, POST, DELETE, PATCH, OPTIONS",
+            "access-control-allow-origin": "",
+            "access-control-max-age": "3628800",
+            "alt-svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000",
+            "cache-control": "no-cache, no-store, must-revalidate",
+            "connection": "keep-alive",
+            "content-encoding": "gzip",
+            "content-type": "application/json",
+            "date": "Fri, 01 Aug 2025 15:06:18 GMT",
+            "pragma": "no-cache",
+            "server": "istio-envoy",
+            "strict-transport-security": "max-age=31536000; includeSubDomains",
+            "transfer-encoding": "chunked",
+            "via": "1.1 google",
+            "x-content-type-options": "nosniff",
+            "x-envoy-decorator-operation": "v1-rpt-harness-test-central.gpapi.svc.cluster.local:8080/*",
+            "x-envoy-upstream-service-time": "4",
+            "x-frame-options": "DENY",
+            "x-gp-version": "2021-03-22",
+            "x_global_transaction_id": "rrt-de488ec2-a2dc-437a-bdc3-0215c64c036a35219",
+            "x_global_transaction_id_source": "gp-apigee"
+          },
+          "body": {
+            "id": "DIS_SAND_abcd1236",
+            "status": "UNDER_REVIEW",
+            "stage": "SECOND_CHARGEBACK",
+            "amount": "2000",
+            "currency": "USD",
+            "reason_code": "137",
+            "reason_description": "Cancelled Merchandise/Services",
+            "result": "PENDING",
+            "documents": [
+              {
+                "id": "DOC_MyEvidence_234234AVCDE-0"
+              }
+            ],
+            "action": {
+              "id": "ACT_VhtxrzLD2hs2WBNGkLMcx8z1eiOprZ",
+              "type": "CHALLENGE",
+              "time_created": "2025-08-01T15:06:18.228Z",
+              "result_code": "SUCCESS",
+              "app_id": "U1lRHKomEn7DN907RCDPxVhyMfiMLcfy",
+              "app_name": "dev_portal_demo"
+            }
+          },
+          "expected": "500",
+          "matched": false
+        },
+        "timestamp": "2025-08-01T15:06:18.225Z"
+      },
+      {
+        "statusCode": "501",
+        "request": {
+          "url": "https://apis.sandbox.globalpay.com/ucp/disputes/DIS_SAND_abcd1236/challenge",
+          "method": "POST",
+          "headers": {
+            "accept": "application/json",
+            "authorization": "Bearer DCKbRy6gtN6gWJI2ja0B7e3POtbb",
+            "content-type": "application/json",
+            "x-gp-version": "2021-03-22",
+            "x-test-scenario": "server_error_501",
+            "x-simulate-error": "501"
+          },
+          "body": "{\"documents\":[{\"b64_content\":\"R0lGODlhigPCAXAAACwAAAAAigPCAYf///8AQnv=\"}]}"
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "headers": {
+            "accept": "application/json",
+            "access-control-allow-credentials": "true",
+            "access-control-allow-headers": "origin, apikey, apienv, authorization, Authorization, x-requested-with, accept, content-type, username, x-gp-version,x-gp-library,X-GP-Idempotency,x-gp-idempotency,X-GP-IDEMPOTENCY",
+            "access-control-allow-methods": "GET, PUT, POST, DELETE, PATCH, OPTIONS",
+            "access-control-allow-origin": "",
+            "access-control-max-age": "3628800",
+            "alt-svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000",
+            "cache-control": "no-cache, no-store, must-revalidate",
+            "connection": "keep-alive",
+            "content-encoding": "gzip",
+            "content-type": "application/json",
+            "date": "Fri, 01 Aug 2025 15:06:20 GMT",
+            "pragma": "no-cache",
+            "server": "istio-envoy",
+            "strict-transport-security": "max-age=31536000; includeSubDomains",
+            "transfer-encoding": "chunked",
+            "via": "1.1 google",
+            "x-content-type-options": "nosniff",
+            "x-envoy-decorator-operation": "v1-rpt-harness-test-central.gpapi.svc.cluster.local:8080/*",
+            "x-envoy-upstream-service-time": "4",
+            "x-frame-options": "DENY",
+            "x-gp-version": "2021-03-22",
+            "x_global_transaction_id": "rrt-9fbe340b-1147-4dc1-8e22-74c5dd07c8638466y",
+            "x_global_transaction_id_source": "gp-apigee"
+          },
+          "body": {
+            "id": "DIS_SAND_abcd1236",
+            "status": "UNDER_REVIEW",
+            "stage": "SECOND_CHARGEBACK",
+            "amount": "2000",
+            "currency": "USD",
+            "reason_code": "137",
+            "reason_description": "Cancelled Merchandise/Services",
+            "result": "PENDING",
+            "documents": [
+              {
+                "id": "DOC_MyEvidence_234234AVCDE-0"
+              }
+            ],
+            "action": {
+              "id": "ACT_qV72ZRr1V9inoUsNdzt5lQQpWn4xp1",
+              "type": "CHALLENGE",
+              "time_created": "2025-08-01T15:06:20.742Z",
+              "result_code": "SUCCESS",
+              "app_id": "U1lRHKomEn7DN907RCDPxVhyMfiMLcfy",
+              "app_name": "dev_portal_demo"
+            }
+          },
+          "expected": "501",
+          "matched": false
+        },
+        "timestamp": "2025-08-01T15:06:20.761Z"
+      },
+      {
+        "statusCode": "502",
+        "request": {
+          "url": "https://apis.sandbox.globalpay.com/ucp/disputes/DIS_SAND_abcd1236/challenge",
+          "method": "POST",
+          "headers": {
+            "accept": "application/json",
+            "authorization": "Bearer DCKbRy6gtN6gWJI2ja0B7e3POtbb",
+            "content-type": "application/json",
+            "x-gp-version": "2021-03-22",
+            "x-test-scenario": "server_error_502",
+            "x-simulate-error": "502"
+          },
+          "body": "{\"documents\":[{\"b64_content\":\"R0lGODlhigPCAXAAACwAAAAAigPCAYf///8AQnv=\"}]}"
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "headers": {
+            "accept": "application/json",
+            "access-control-allow-credentials": "true",
+            "access-control-allow-headers": "origin, apikey, apienv, authorization, Authorization, x-requested-with, accept, content-type, username, x-gp-version,x-gp-library,X-GP-Idempotency,x-gp-idempotency,X-GP-IDEMPOTENCY",
+            "access-control-allow-methods": "GET, PUT, POST, DELETE, PATCH, OPTIONS",
+            "access-control-allow-origin": "",
+            "access-control-max-age": "3628800",
+            "alt-svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000",
+            "cache-control": "no-cache, no-store, must-revalidate",
+            "connection": "keep-alive",
+            "content-encoding": "gzip",
+            "content-type": "application/json",
+            "date": "Fri, 01 Aug 2025 15:06:21 GMT",
+            "pragma": "no-cache",
+            "server": "istio-envoy",
+            "strict-transport-security": "max-age=31536000; includeSubDomains",
+            "transfer-encoding": "chunked",
+            "via": "1.1 google",
+            "x-content-type-options": "nosniff",
+            "x-envoy-decorator-operation": "v1-rpt-harness-test-central.gpapi.svc.cluster.local:8080/*",
+            "x-envoy-upstream-service-time": "3",
+            "x-frame-options": "DENY",
+            "x-gp-version": "2021-03-22",
+            "x_global_transaction_id": "rrt-98800e78-0710-40a8-ab97-19da1f26c6a6x2t2f",
+            "x_global_transaction_id_source": "gp-apigee"
+          },
+          "body": {
+            "id": "DIS_SAND_abcd1236",
+            "status": "UNDER_REVIEW",
+            "stage": "SECOND_CHARGEBACK",
+            "amount": "2000",
+            "currency": "USD",
+            "reason_code": "137",
+            "reason_description": "Cancelled Merchandise/Services",
+            "result": "PENDING",
+            "documents": [
+              {
+                "id": "DOC_MyEvidence_234234AVCDE-0"
+              }
+            ],
+            "action": {
+              "id": "ACT_8sRZhQ1RBzEv6EmteUC44qfuK8MAEd",
+              "type": "CHALLENGE",
+              "time_created": "2025-08-01T15:06:21.277Z",
+              "result_code": "SUCCESS",
+              "app_id": "U1lRHKomEn7DN907RCDPxVhyMfiMLcfy",
+              "app_name": "dev_portal_demo"
+            }
+          },
+          "expected": "502",
+          "matched": false
+        },
+        "timestamp": "2025-08-01T15:06:21.277Z"
+      },
+      {
+        "statusCode": "504",
+        "request": {
+          "url": "https://apis.sandbox.globalpay.com/ucp/disputes/DIS_SAND_abcd1236/challenge",
+          "method": "POST",
+          "headers": {
+            "accept": "application/json",
+            "authorization": "Bearer DCKbRy6gtN6gWJI2ja0B7e3POtbb",
+            "content-type": "application/json",
+            "x-gp-version": "2021-03-22",
+            "x-test-scenario": "server_error_504",
+            "x-simulate-error": "504"
+          },
+          "body": "{\"documents\":[{\"b64_content\":\"R0lGODlhigPCAXAAACwAAAAAigPCAYf///8AQnv=\"}]}"
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "headers": {
+            "accept": "application/json",
+            "access-control-allow-credentials": "true",
+            "access-control-allow-headers": "origin, apikey, apienv, authorization, Authorization, x-requested-with, accept, content-type, username, x-gp-version,x-gp-library,X-GP-Idempotency,x-gp-idempotency,X-GP-IDEMPOTENCY",
+            "access-control-allow-methods": "GET, PUT, POST, DELETE, PATCH, OPTIONS",
+            "access-control-allow-origin": "",
+            "access-control-max-age": "3628800",
+            "alt-svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000",
+            "cache-control": "no-cache, no-store, must-revalidate",
+            "connection": "keep-alive",
+            "content-encoding": "gzip",
+            "content-type": "application/json",
+            "date": "Fri, 01 Aug 2025 15:06:21 GMT",
+            "pragma": "no-cache",
+            "server": "istio-envoy",
+            "strict-transport-security": "max-age=31536000; includeSubDomains",
+            "transfer-encoding": "chunked",
+            "via": "1.1 google",
+            "x-content-type-options": "nosniff",
+            "x-envoy-decorator-operation": "v1-rpt-harness-test-central.gpapi.svc.cluster.local:8080/*",
+            "x-envoy-upstream-service-time": "4",
+            "x-frame-options": "DENY",
+            "x-gp-version": "2021-03-22",
+            "x_global_transaction_id": "rrt-6ccc4022-7fe1-45df-9e3f-0f24c929050243el5",
+            "x_global_transaction_id_source": "gp-apigee"
+          },
+          "body": {
+            "id": "DIS_SAND_abcd1236",
+            "status": "UNDER_REVIEW",
+            "stage": "SECOND_CHARGEBACK",
+            "amount": "2000",
+            "currency": "USD",
+            "reason_code": "137",
+            "reason_description": "Cancelled Merchandise/Services",
+            "result": "PENDING",
+            "documents": [
+              {
+                "id": "DOC_MyEvidence_234234AVCDE-0"
+              }
+            ],
+            "action": {
+              "id": "ACT_NiCrUBLJtwEuEAy7ZdIFiZq2AYcFmk",
+              "type": "CHALLENGE",
+              "time_created": "2025-08-01T15:06:21.762Z",
+              "result_code": "SUCCESS",
+              "app_id": "U1lRHKomEn7DN907RCDPxVhyMfiMLcfy",
+              "app_name": "dev_portal_demo"
+            }
+          },
+          "expected": "504",
+          "matched": false
+        },
+        "timestamp": "2025-08-01T15:06:21.764Z"
+      }
+    ],
+    "summary": {
+      "total": 9,
+      "successful": 3,
+      "errors": 6
+    }
+  }
+}
