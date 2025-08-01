@@ -72,6 +72,9 @@ async function generateAPIResponse() {
     console.log('Press Ctrl+C to cancel at any time.');
     
     await generateAPIResponses(endpoint);
+    
+    // Auto-update dashboard and open results
+    await updateDashboardAndOpen();
 }
 
 /**
@@ -828,6 +831,44 @@ async function makeAPICall(apiRequest, expectedStatusCode) {
             matched: false,
             error: true
         };
+    }
+}
+
+/**
+ * Update dashboard with latest results and automatically open it
+ */
+async function updateDashboardAndOpen() {
+    try {
+        console.log('\n🔄 Updating dashboard with latest results...');
+        
+        // Import exec for running shell commands
+        const { exec } = await import('child_process');
+        const { promisify } = await import('util');
+        const execAsync = promisify(exec);
+        
+        // Update the dashboard with latest results
+        await execAsync('node update-dashboard.js');
+        console.log('✅ Dashboard updated successfully!');
+        
+        // Auto-open the results dashboard
+        const dashboardPath = new URL('results-dashboard-autoload.html', import.meta.url).pathname;
+        
+        // Platform-specific open command
+        let openCommand;
+        if (process.platform === 'darwin') {
+            openCommand = `open "${dashboardPath}"`;
+        } else if (process.platform === 'win32') {
+            openCommand = `start "${dashboardPath}"`;
+        } else {
+            openCommand = `xdg-open "${dashboardPath}"`;
+        }
+        
+        await execAsync(openCommand);
+        console.log('🌐 Results dashboard opened in your default browser!');
+        
+    } catch (error) {
+        console.log(`⚠️ Could not auto-open dashboard: ${error.message}`);
+        console.log('💡 You can manually open: results-dashboard-autoload.html');
     }
 }
 
