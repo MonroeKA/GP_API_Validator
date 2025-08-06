@@ -352,13 +352,13 @@
             endpoints.forEach(endpoint => {
                 if (endpoint.responses) {
                     totalTests += endpoint.responses.length;
-                    totalSuccessful += endpoint.responses.filter(r => r.response && !r.error).length;
-                    totalErrors += endpoint.responses.filter(r => r.error).length;
+                    totalSuccessful += endpoint.responses.filter(r => r.response && !r.error && r.response.matched).length;
+                    totalErrors += endpoint.responses.filter(r => r.error || (r.response && !r.response.matched)).length;
                     totalMatched += endpoint.responses.filter(r => r.response && r.response.matched).length;
                 }
             });
 
-            const successRate = totalTests > 0 ? Math.round((totalSuccessful / totalTests) * 100) : 0;
+            const successRate = totalTests > 0 ? Math.round((totalMatched / totalTests) * 100) : 0;
             const matchRate = totalTests > 0 ? Math.round((totalMatched / totalTests) * 100) : 0;
 
             content.innerHTML = `
