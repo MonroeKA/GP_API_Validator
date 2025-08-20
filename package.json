@@ -6,8 +6,10 @@
   "scripts": {
     "test": "node api-scraper.js",
     "scrape": "node api-scraper.js",
+    "scrape:single": "echo '1' | node api-scraper.js",
+    "scrape:fullsite": "echo '2' | node api-scraper.js",
     "update-dashboard": "node update-dashboard.js",
-    "create-dashboard": "node create-autoload-dashboard.js",
+    "create-dashboard": "node create-enhanced-dashboard.js",
     "view-results": "open results-dashboard-autoload.html"
   },
   "keywords": [],

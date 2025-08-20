@@ -10,7 +10,7 @@ import readline from 'readline';
  */
 
 /**
- * Get user input from console
+ * Get user input from console with sanitization
  */
 function getUserInput(question) {
     const rl = readline.createInterface({
@@ -21,39 +21,75 @@ function getUserInput(question) {
     return new Promise((resolve) => {
         rl.question(question, (answer) => {
             rl.close();
-            resolve(answer.trim());
+            // Sanitize input to prevent HTML/special character issues
+            const sanitized = answer.trim()
+                .replace(/[<>]/g, '') // Remove angle brackets
+                .replace(/^\s+|\s+$/g, ''); // Trim whitespace
+            resolve(sanitized);
         });
     });
 }
 
 /**
- * Collect URL from user input
+ * Collect URL from user input with mode selection
  */
 async function collectEndpointFromUser() {
-    console.log('🎯 API Documentation URL Collector');
+    console.log('🎯 API Documentation Scraper');
     console.log('=====================================');
-    console.log('Enter API documentation URL to scrape and test.');
-    console.log('Example: https://developer.globalpay.com/api/disputes#/Challenge/challengeDispute');
+    console.log('Choose scraping mode:');
+    console.log('1. Single page - Test one specific API endpoint');
+    console.log('2. Full site - Crawl entire API site navigation');
     console.log('');
 
-    while (true) {
-        const url = await getUserInput(`📝 Enter API documentation URL: `);
+    const mode = await getUserInput('Select mode (1 or 2): ');
+    
+    if (mode === '2') {
+        console.log('🗂️ Full site navigation mode selected');
+        console.log('Enter the main API documentation URL (we will discover all sub-pages)');
+        console.log('Example: https://developer.globalpay.com/api/overview');
         
-        // If no URL provided, force user to enter one
-        if (!url) {
-            console.log('❌ URL is required. Please enter a valid API documentation URL.');
-            continue;
+        while (true) {
+            const siteUrl = await getUserInput('📝 Enter API site base URL: ');
+            
+            if (!siteUrl) {
+                console.log('❌ URL is required for full site mode.');
+                continue;
+            }
+            
+            if (!siteUrl.startsWith('http')) {
+                console.log('❌ Invalid URL format. Please enter a complete URL starting with http:// or https://');
+                continue;
+            }
+            
+            return {
+                mode: 'fullsite',
+                url: siteUrl
+            };
         }
-        
-        // Validate URL format
-        if (!url.startsWith('http')) {
-            console.log('❌ Invalid URL format. Please enter a complete URL starting with http:// or https://');
-            continue;
+    } else {
+        console.log('📄 Single page mode selected');
+        console.log('Enter API documentation URL to scrape and test.');
+        console.log('Example: https://developer.globalpay.com/api/disputes#/Challenge/challengeDispute');
+        console.log('');
+
+        while (true) {
+            const url = await getUserInput('📝 Enter API documentation URL: ');
+            
+            if (!url) {
+                console.log('❌ URL is required. Please enter a valid API documentation URL.');
+                continue;
+            }
+            
+            if (!url.startsWith('http')) {
+                console.log('❌ Invalid URL format. Please enter a complete URL starting with http:// or https://');
+                continue;
+            }
+            
+            return {
+                mode: 'single',
+                url: url
+            };
         }
-        
-        return {
-            url: url
-        };
     }
 }
 
@@ -61,25 +97,382 @@ async function generateAPIResponse() {
     console.log('🚀 API Response Generator Starting...\n');
     
     // Collect endpoint information from user
-    const endpoint = await collectEndpointFromUser();
+    const config = await collectEndpointFromUser();
     
-    if (!endpoint) {
-        console.log('❌ No endpoint provided. Exiting...');
+    if (!config) {
+        console.log('❌ No configuration provided. Exiting...');
         return;
     }
 
-    console.log(`\n🎯 Ready to test endpoint: ${endpoint.url}`);
-    console.log('Press Ctrl+C to cancel at any time.');
-    
-    await generateAPIResponses(endpoint);
+    if (config.mode === 'fullsite') {
+        console.log(`\n� Ready to crawl full site: ${config.url}`);
+        console.log('Press Ctrl+C to cancel at any time.');
+        
+        await runFullSiteMode(config.url);
+    } else {
+        console.log(`\n🎯 Ready to test endpoint: ${config.url}`);
+        console.log('Press Ctrl+C to cancel at any time.');
+        
+        await generateAPIResponses(config);
+    }
     
     // Auto-update dashboard and open results
     await updateDashboardAndOpen();
 }
 
 /**
- * Main function to generate API responses for a single endpoint
+ * Scrape subnav links from a page's left-hand navigation
  */
+async function scrapeSubnavLinks(page, baseUrl) {
+    console.log('🔍 Discovering API navigation links...');
+    
+    const links = [];
+    const visited = new Set();
+    
+    try {
+        // Wait for page to load completely
+        await page.waitForLoadState('networkidle');
+        
+        // Common selectors for API documentation navigation
+        const navSelectors = [
+            // Global Payments specific
+            '.side-navbar a[href*="/api/"]',
+            'nav a[href*="/api/"]',
+            '.sidebar a[href*="/api/"]',
+            '.docs-nav a[href*="/api/"]',
+            '.navigation a[href*="/api/"]',
+            '.menu a[href*="/api/"]',
+            'aside a[href*="/api/"]',
+            // Generic patterns
+            'a[href*="/api/"]',
+            'a[href*="endpoint"]',
+            'a[href*="reference"]',
+            '[class*="nav"] a[href*="api"]',
+            'ul[class*="menu"] a[href*="api"]'
+        ];
+
+        for (const selector of navSelectors) {
+            try {
+                const navLinks = await page.locator(selector).all();
+                console.log(`   Found ${navLinks.length} links with selector: ${selector}`);
+                
+                for (const link of navLinks) {
+                    try {
+                        const href = await link.getAttribute('href');
+                        const text = await link.textContent();
+                        
+                        if (href && text && text.trim()) {
+                            // Convert relative URLs to absolute
+                            let fullUrl = href;
+                            if (href.startsWith('/')) {
+                                const baseUrlObj = new URL(baseUrl);
+                                fullUrl = `${baseUrlObj.protocol}//${baseUrlObj.host}${href}`;
+                            } else if (href.startsWith('#')) {
+                                fullUrl = `${baseUrl.split('#')[0]}${href}`;
+                            }
+                            
+                            // Filter for likely API endpoint pages
+                            if (isLikelyAPIEndpoint(fullUrl, text.trim()) && !visited.has(fullUrl)) {
+                                visited.add(fullUrl);
+                                links.push({
+                                    url: fullUrl,
+                                    title: text.trim(),
+                                    selector: selector
+                                });
+                                console.log(`      ✅ Added: ${text.trim()} -> ${fullUrl}`);
+                            }
+                        }
+                    } catch (e) {
+                        // Skip this individual link if there's an error
+                        continue;
+                    }
+                }
+            } catch (e) {
+                // Try next selector
+                continue;
+            }
+        }
+        
+    } catch (error) {
+        console.log(`Warning: Error discovering navigation links: ${error.message}`);
+    }
+    
+    console.log(`🔗 Total discovered links: ${links.length}`);
+    
+    // Limit to reasonable number to avoid overwhelming the system
+    if (links.length > 50) {
+        console.log(`🔗 Found ${links.length} links, limiting to first 50 for performance`);
+        return links.slice(0, 50);
+    }
+    
+    return links;
+}
+
+/**
+ * Check if a URL/text combination is likely an API endpoint
+ */
+function isLikelyAPIEndpoint(url, text) {
+    const url_lower = url.toLowerCase();
+    const text_lower = text.toLowerCase();
+    
+    // Global Payments specific patterns
+    const globalPaymentsPatterns = [
+        /\[post\]/i, /\[get\]/i, /\[patch\]/i, /\[put\]/i, /\[delete\]/i,
+        /access.?token/i, /accounts?/i, /actions?/i, /authentications?/i,
+        /batches?/i, /disputes?/i, /transactions?/i, /payments?/i,
+        /merchants?/i, /reports?/i, /verifications?/i
+    ];
+    
+    // Include URLs that look like API endpoints
+    const includePatterns = [
+        /\/api\//,
+        /#\/[A-Z]/,
+        /endpoint/i,
+        /resource/i,
+        /method/i,
+        ...globalPaymentsPatterns
+    ];
+    
+    // Exclude URLs that are clearly not API endpoints  
+    const excludePatterns = [
+        /\/getting-started/i,
+        /\/overview$/i,
+        /\/introduction/i,
+        /\/changelog/i,
+        /\/support/i,
+        /\/contact/i,
+        /\/about/i,
+        /\.pdf$/i,
+        /\.zip$/i,
+        /\/guide/i,
+        /\/tutorial/i
+    ];
+    
+    // Must match at least one include pattern
+    const hasIncludePattern = includePatterns.some(pattern => 
+        pattern.test(url_lower) || pattern.test(text_lower)
+    );
+    
+    // Must not match any exclude pattern
+    const hasExcludePattern = excludePatterns.some(pattern => 
+        pattern.test(url_lower) || pattern.test(text_lower)
+    );
+    
+    // Must have API-like text content or be clearly an API URL
+    const hasApiText = /create|get|update|delete|post|put|patch|\[(post|get|patch|put|delete)\]/i.test(text_lower) || 
+                      url_lower.includes('/api/') ||
+                      url_lower.includes('#/');
+    
+    return hasIncludePattern && !hasExcludePattern && hasApiText;
+}
+
+/**
+ * Run full site mode - crawl all discovered API pages
+ */
+async function runFullSiteMode(startUrl) {
+    const { firefox } = await import('playwright');
+    
+    const browser = await firefox.launch({ 
+        headless: true,
+        args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
+    });
+    
+    const page = await browser.newPage();
+    const allResults = [];
+    const processedUrls = new Set();
+
+    try {
+        console.log(`\n🌐 Starting full site crawl from: ${startUrl}`);
+        
+        // First, navigate to the start URL and discover all nav links
+        await page.goto(startUrl);
+        const discoveredLinks = await scrapeSubnavLinks(page, startUrl);
+        
+        if (discoveredLinks.length === 0) {
+            console.log('❌ No API links discovered. Try a different base URL or use single page mode.');
+            return;
+        }
+        
+        console.log(`\n📊 Processing ${discoveredLinks.length} discovered API pages...`);
+        
+        // Configuration for tokenized credentials
+        const tokenizedCredentials = {
+            accessToken: "Bearer DCKbRy6gtN6gWJI2ja0B7e3POtbb",
+            apiVersion: "2021-03-22", 
+            baseUrl: "https://apis.sandbox.globalpay.com"
+        };
+        
+        let processedCount = 0;
+        
+        // Process each discovered link
+        for (const linkInfo of discoveredLinks) {
+            const { url, title } = linkInfo;
+            
+            if (processedUrls.has(url)) {
+                console.log(`⏭️  Skipping already processed: ${title}`);
+                continue;
+            }
+            
+            processedUrls.add(url);
+            processedCount++;
+            
+            console.log(`\n📄 Processing ${processedCount}/${discoveredLinks.length}: ${title}`);
+            console.log(`🔗 URL: ${url}`);
+            
+            try {
+                // Navigate to the specific endpoint page
+                await page.goto(url, { waitUntil: 'networkidle' });
+                
+                // Extract and test this endpoint
+                const pageResults = await processEndpointPage(page, {url, title}, tokenizedCredentials);
+                
+                if (pageResults && pageResults.tests && pageResults.tests.length > 0) {
+                    allResults.push({
+                        pageTitle: title,
+                        pageUrl: url,
+                        ...pageResults
+                    });
+                    
+                    console.log(`   ✅ Completed: ${pageResults.tests.length} tests generated`);
+                } else {
+                    console.log(`   ⚠️  No testable endpoints found on this page`);
+                }
+                
+                // Brief pause between requests
+                await page.waitForTimeout(1000);
+                
+            } catch (error) {
+                console.log(`   ❌ Error processing ${title}: ${error.message}`);
+                continue;
+            }
+        }
+        
+        // Save multi-site results
+        if (allResults.length > 0) {
+            await saveMultiSiteResults(allResults, startUrl);
+            console.log(`\n🎉 Full site crawl completed! ${allResults.length} pages processed.`);
+        } else {
+            console.log(`\n❌ No results generated from full site crawl.`);
+        }
+        
+    } catch (error) {
+        console.error(`❌ Error in full site mode: ${error.message}`);
+    } finally {
+        await browser.close();
+    }
+}
+
+/**
+ * Process a single endpoint page - extract and test APIs
+ */
+async function processEndpointPage(page, pageInfo, tokenizedCredentials) {
+    try {
+        // Extract request details from the current page
+        const requestDetails = await extractRequestDetails(page);
+        
+        if (!requestDetails || !requestDetails.url) {
+            console.log(`   No valid API endpoint found on page: ${pageInfo.title}`);
+            return null;
+        }
+        
+        // Extract status codes to test
+        const statusCodes = await extractStatusCodesFromPage(page);
+        
+        if (statusCodes.length === 0) {
+            console.log(`   No status codes found on page: ${pageInfo.title}`);
+            return null;
+        }
+        
+        console.log(`   Found ${statusCodes.length} status codes to test`);
+        
+        // Generate responses for each status code
+        const tests = [];
+        let successfulTests = 0;
+        let errorTests = 0;
+        
+        for (const statusCode of statusCodes.slice(0, 10)) { // Limit to 10 tests per page
+            try {
+                const apiRequest = prepareAPIRequest(requestDetails, tokenizedCredentials, statusCode, {
+                    url: pageInfo.url,
+                    title: pageInfo.title
+                });
+                
+                const result = await makeAPICall(apiRequest, statusCode);
+                
+                if (result.error) {
+                    errorTests++;
+                } else {
+                    successfulTests++;
+                }
+                
+                tests.push({
+                    method: requestDetails.method || 'GET',
+                    statusCode: result.statusCode || statusCode,
+                    scenario: `${statusCode} Test`,
+                    error: result.error,
+                    ...result
+                });
+                
+                // Brief pause between requests
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+            } catch (error) {
+                errorTests++;
+                tests.push({
+                    method: requestDetails.method || 'GET',
+                    statusCode: null,
+                    scenario: `${statusCode} Test`,
+                    error: error.message
+                });
+            }
+        }
+        
+        return {
+            pageTitle: pageInfo.title,
+            pageUrl: pageInfo.url,
+            timestamp: new Date().toISOString(),
+            tests: tests,
+            successfulTests: successfulTests,
+            errorTests: errorTests,
+            endpoint: {
+                method: requestDetails.method,
+                url: requestDetails.url,
+                path: requestDetails.path
+            }
+        };
+        
+    } catch (error) {
+        console.log(`   Error processing endpoint page: ${error.message}`);
+        return null;
+    }
+}
+
+/**
+ * Save multi-site results to JSON file
+ */
+async function saveMultiSiteResults(allResults, startUrl) {
+    const timestamp = Math.floor(Date.now() / 1000);
+    const filename = `multi-site-api-responses-${timestamp}.json`;
+    
+    const multiSiteData = {
+        startUrl: startUrl,
+        crawlTimestamp: new Date().toISOString(),
+        totalPages: allResults.length,
+        totalTests: allResults.reduce((sum, page) => sum + (page.tests ? page.tests.length : 0), 0),
+        totalSuccessful: allResults.reduce((sum, page) => sum + (page.successfulTests || 0), 0),
+        totalErrors: allResults.reduce((sum, page) => sum + (page.errorTests || 0), 0),
+        pages: allResults
+    };
+    
+    const fs = await import('fs');
+    await fs.promises.writeFile(filename, JSON.stringify(multiSiteData, null, 2));
+    
+    console.log(`💾 Multi-site results saved to: ${filename}`);
+    console.log(`📊 Summary: ${multiSiteData.totalPages} pages, ${multiSiteData.totalTests} tests`);
+    
+    return filename;
+}
+
 async function generateAPIResponses(endpoint) {
     const { firefox } = await import('playwright');
     
