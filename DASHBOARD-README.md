@@ -1,76 +1,80 @@
-# 🚀 API Testing Dashboard with Auto-Load
+# 🚀 Enhanced API Testing Dashboard
 
-This dashboard automatically loads the most recent API test results and displays them in an easy-to-consume visual format.
+This dashboard automatically loads the latest API test results with detailed, expandable test information including requests, responses, and response times.
 
 ## 📊 Quick Start
 
-### Option 1: Auto-Loading Dashboard (Recommended)
+### View Latest Results
 ```bash
 # View the latest results automatically
 npm run view-results
 
-# Or generate fresh dashboard and open it
-npm run dashboard
+# Update dashboard with latest results and open
+npm run update-dashboard
 ```
 
-### Option 2: Manual File Upload
+### Run Tests
 ```bash
-# Open the interactive dashboard
-open results-viewer.html
-# Then upload any JSON results file manually
+# Single endpoint test
+npm run scrape:single
+
+# Full site crawl
+npm run scrape:fullsite
 ```
 
 ## 🔧 Available Commands
 
 | Command | Description |
 |---------|-------------|
-| `npm run single-test` | Run single endpoint API test |
-| `npm run multi-test` | Run multi-endpoint API test |
+| `npm run scrape:single` | Run single endpoint API test |
+| `npm run scrape:fullsite` | Run full site crawl with navigation discovery |
 | `npm run update-dashboard` | Update dashboard with latest results |
-| `npm run dashboard` | Update dashboard and open in browser |
+| `npm run create-dashboard` | Generate fresh dashboard |
 | `npm run view-results` | Open current dashboard |
 
 ## 📁 Dashboard Files
 
-- **`results-dashboard-autoload.html`** - Self-contained dashboard with embedded latest data
-- **`results-viewer.html`** - Interactive dashboard with file upload
-- **`index.html`** - Landing page with file overview
+- **`results-dashboard-autoload.html`** - Enhanced dashboard with expandable test details
+- **`api-responses-*.json`** - Single endpoint test results
+- **`multi-site-api-responses-*.json`** - Full site crawl results
 
-## 🎯 Auto-Loading Features
+## 🎯 Enhanced Dashboard Features
 
-### ✅ What Auto-Loads
-- **Latest Test Results**: Automatically finds and loads the most recent JSON file
-- **Visual Status**: Green ✅, Orange ⚠️, Red ❌ indicators
-- **Summary Stats**: Success rates, error counts, total tests
-- **Detailed Views**: Expandable request/response data
+### ✅ What's Included
+- **Latest Results Only**: Shows only the most recent test results 
+- **Expandable Test Details**: Click any test to see full request/response data
+- **Response Times**: Actual response times from API calls
+- **Status Matching**: Visual indicators for expected vs actual responses
+- **Two Tabs**: Latest Single Test and Multi-Site Results
 
 ### 🔄 Auto-Update Workflow
-1. Run your API tests (`npm run single-test` or `npm run multi-test`)
-2. Update dashboard (`npm run update-dashboard`)
-3. View results (`npm run view-results`)
+1. Run API tests (`npm run scrape:single` or `npm run scrape:fullsite`)
+2. Dashboard auto-updates and opens in browser
+3. Click any test row to see detailed information
 
 ## 📱 Dashboard Features
 
-### Summary Cards
-- 📊 **Endpoints Tested**: Number of API endpoints
-- 🧪 **Total API Calls**: Count of all requests made
-- ✅ **Successful**: Requests that completed without errors
-- ⚠️ **Status Mismatches**: Expected vs actual status code differences
-- ❌ **Errors**: Failed requests or network errors
-- 📈 **Success Rate**: Percentage of successful requests
+### Enhanced Test Cards
+- 📊 **Summary Statistics**: Total tests, success count, errors
+- 🧪 **Expandable Tests**: Click to reveal detailed information
+- ✅ **Status Indicators**: Green (success), Orange (mismatch), Red (error)
+- ⏱️ **Response Times**: Real response times from API calls
 
-### Test Details
-- **🎯 Endpoint Sections**: Grouped by API endpoint
-- **🔍 Expandable Items**: Click to see full request/response
-- **📊 Visual Indicators**: 
-  - ✅ **Expected**: Got the expected status code
-  - ⚠️ **Mismatch**: Different status code than expected
-  - ❌ **Error**: Request failed completely
+### Detailed Test Information
+- **📤 Request Section**: 
+  - Full API URL and HTTP method
+  - Request headers (authorization, content-type, etc.)
+  - Request body (JSON payloads)
+- **� Response Section**:
+  - Actual vs expected status codes
+  - Response headers with server timing
+  - Full JSON response bodies
+- **🕒 Performance Data**: Response times and timestamps
 
-### Request/Response View
-- **📤 Request**: HTTP method, URL, headers, body
-- **📥 Response**: Status, headers, response body
-- **🕒 Timestamp**: When the test was executed
+### Multi-Site Navigation
+- **🌐 Site Overview**: Summary of entire site crawl
+- **� Page Navigation**: Click between different API pages
+- **� Per-Page Results**: Each page shows its specific test results
 
 ## 🎨 Visual Design
 
@@ -81,20 +85,21 @@ open results-viewer.html
 
 ## 🛠️ Technical Details
 
-### File Structure
+### Current File Structure
 ```
-results-dashboard-autoload.html  # Auto-loading dashboard (main)
-results-viewer.html             # Manual upload dashboard
-index.html                     # Landing page
-api-responses-*.json           # Single endpoint results
-multi-endpoint-*.json          # Multi endpoint results
+results-dashboard-autoload.html     # Enhanced dashboard (main)
+api-responses-*.json               # Single endpoint results
+multi-site-api-responses-*.json    # Full site crawl results
+create-enhanced-dashboard.js       # Dashboard generator
+update-dashboard.js               # Dashboard updater
 ```
 
-### Auto-Detection Logic
-1. Scans directory for `*api-responses*.json` files
-2. Sorts by modification time (newest first)
-3. Embeds latest data directly in HTML
-4. No external dependencies or server required
+### Enhanced Features
+1. **Latest Results Only**: Shows only the most recent files
+2. **Expandable UI**: Click any test to see full details
+3. **Performance Data**: Real response times from API headers
+4. **No External Dependencies**: Self-contained HTML file
+5. **Mobile Responsive**: Works on all device sizes
 
 ### Browser Compatibility
 - ✅ Chrome, Firefox, Safari, Edge
@@ -103,58 +108,52 @@ multi-endpoint-*.json          # Multi endpoint results
 
 ## 🚀 Usage Examples
 
-### After Running Tests
+### Single Endpoint Testing
 ```bash
 # Run single endpoint test
-npm run single-test
-
-# Update and view dashboard
-npm run dashboard
+npm run scrape:single
+# Dashboard auto-updates and opens with results
 ```
 
-### Comparing Results
+### Full Site Crawl
 ```bash
-# Run multi-endpoint test
-npm run multi-test
+# Discover and test entire API site
+npm run scrape:fullsite
+# Navigate between pages in Multi-Site tab
+```
 
-# Update dashboard (doesn't auto-open)
+### Manual Dashboard Update
+```bash
+# Update dashboard without running tests
 npm run update-dashboard
 
-# View when ready
+# View current dashboard
 npm run view-results
-```
-
-### Manual File Selection
-```bash
-# Open interactive version
-open results-viewer.html
-# Then drag & drop or select any JSON results file
 ```
 
 ## 📈 Interpreting Results
 
-### Success Rates
-- **90-100%**: Excellent ✅
-- **70-89%**: Good ⚠️
-- **Below 70%**: Needs attention ❌
+### Visual Indicators
+- **✅ Green**: Status code matches expected result
+- **⚠️ Orange**: Status code differs from expected (may still be valid)
+- **❌ Red**: Request failed or error occurred
 
-### Status Code Matching
-- **Matched**: API returned expected status code
-- **Mismatched**: Different code (might still be valid)
-- **Error**: Request failed completely
+### Response Time Analysis
+- **< 100ms**: Excellent performance
+- **100-500ms**: Good performance
+- **> 500ms**: May need optimization
 
-### Common Patterns
-- **401/403 Mismatches**: Expected authentication errors
-- **404 Mismatches**: Resource not found vs bad request
-- **5xx Errors**: Server-side issues that may need investigation
+### Status Code Understanding
+- **2xx Success**: Request completed successfully
+- **4xx Client Error**: Authentication, validation, or request issues
+- **5xx Server Error**: API server-side problems
 
 ## 🔧 Customization
 
-The dashboard can be customized by modifying:
-- `create-autoload-dashboard.js` - Auto-load logic
-- `results-viewer.html` - Dashboard styling and layout
-- `update-dashboard.js` - Update workflow
+Modify these files to customize the dashboard:
+- `create-enhanced-dashboard.js` - Dashboard generation logic
+- CSS in dashboard HTML - Styling and appearance
 
 ---
 
-**Ready to use!** 🎉 Just run `npm run dashboard` to see your latest API test results!
+**Enhanced Testing Ready!** 🎉 Run `npm run scrape:single` or `npm run scrape:fullsite` to see detailed API test results!

@@ -1,23 +1,24 @@
-# Global Payments Developer Portal QA Automation
+# Global Payments API Testing Suite
 
-A comprehensive QA automation system designed to systematically audit the Global Payments developer portal, test code snippets against the sandbox environment, and generate detailed discrepancy reports.
+A comprehensive API testing and scraping system designed to test Global Payments API endpoints with dual-mode operation: single endpoint testing or full-site navigation crawling with detailed interactive dashboards.
 
 ## 🎯 Overview
 
-This system performs a complete end-to-end audit of the Global Payments developer portal by:
+This enhanced system provides flexible API testing capabilities:
 
-1. **Crawling & Scraping**: Systematically navigating the entire developer portal to extract all content
-2. **Code Extraction**: Identifying and categorizing code snippets across different programming languages
-3. **API Testing**: Executing extracted code snippets against the sandbox environment
-4. **Analysis & Reporting**: Comparing actual API behavior with documented behavior and generating comprehensive reports
+1. **Dual-Mode Scraper**: Choose between single endpoint testing or full-site navigation crawling
+2. **Interactive Dashboard**: Detailed test results with expandable request/response information
+3. **Response Time Tracking**: Monitor API performance with detailed timing metrics  
+4. **Multi-Site Testing**: Test multiple endpoints simultaneously with organized results
+5. **Enhanced Reporting**: Comprehensive test data with status codes, headers, and full responses
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
 - Node.js 18+ installed
-- npm or yarn package manager
-- Internet connection for crawling and API testing
+- npm package manager
+- Internet connection for API testing and scraping
 
 ### Installation
 
@@ -27,268 +28,359 @@ This system performs a complete end-to-end audit of the Global Payments develope
    npm install
    ```
 
-### 🔑 API Credentials Setup (Important!)
+### Available Commands
 
-**Before running tests, configure your Global Payments API credentials for accurate results:**
+| Command | Description |
+|---------|-------------|
+| `npm start` | Launch the main API scraper with mode selection |
+| `npm run dashboard` | Create enhanced dashboard from latest results |
+| `npm run view` | Open the interactive results dashboard |
+| `npm run clean` | Clean up temporary files and old results |
+
+### 🔑 API Testing Setup
+
+**Configure your Global Payments API credentials for comprehensive testing:**
 
 ```bash
-# Interactive setup (recommended)
-node src/credentials.js setup
+# Start the interactive scraper
+npm start
 
-# Or check current status
-node src/credentials.js check
+# The system will guide you through:
+# 1. Mode selection (single endpoint vs full-site crawling)  
+# 2. Credential configuration
+# 3. Target endpoint selection
+# 4. Automatic dashboard generation
 ```
 
-**Why this matters:**
-- ✅ **With real credentials**: Tests use your actual API access and return meaningful results
-- ❌ **Without credentials**: Tests fail with authentication errors, providing limited insights
-
-**Getting your credentials:**
-1. Go to https://developer.globalpay.com/
-2. Sign up/login and create an application
-3. Copy your App ID and App Key
-4. Use sandbox credentials for testing
+**Supported Testing Modes:**
+- ✅ **Single Endpoint**: Test a specific API endpoint with detailed analysis
+- ✅ **Full-Site Crawling**: Navigate and test all discoverable endpoints automatically
+- ✅ **Multi-Site Testing**: Test multiple endpoints with organized tabbed results
 
 📖 **Detailed setup guide**: See [CREDENTIALS-SETUP.md](./CREDENTIALS-SETUP.md)
 
-### Running the Full Audit
+### Running the Enhanced API Scraper
 
-Execute the complete audit process:
+Execute the main scraping and testing system:
 
 ```bash
-npm run full-audit
+npm start
 ```
 
-This will run all three phases automatically:
-- Phase 1: Crawl and scrape the developer portal
-- Phase 2: Test extracted code snippets
-- Phase 3: Generate comprehensive report
+This will launch the interactive system that guides you through:
+- **Mode Selection**: Choose between single endpoint or full-site crawling
+- **Target Configuration**: Enter API endpoint or let the system discover endpoints
+- **Credential Setup**: Configure authentication for comprehensive testing  
+- **Automated Testing**: Execute tests with detailed response capture
+- **Dashboard Generation**: Automatically create interactive results dashboard
 
 ### Running Individual Components
 
-You can also run each component separately:
+You can also run specific components:
 
 ```bash
-# Crawl and scrape only
-npm run crawl
+# Generate enhanced dashboard from existing results
+npm run dashboard
 
-# Test snippets only (requires crawl data)
-npm run test-snippets
+# Open the interactive dashboard in your browser
+npm run view
 
-# Generate report only (requires crawl and test data)
-node src/report-generator.js
+# Clean up old results and temporary files
+npm run clean
 ```
 
-## 📊 Generated Reports
+## 📊 Enhanced Dashboard Features
 
-After running the audit, you'll find several files:
+After running tests, you'll have access to an interactive dashboard with:
 
-### Data Files (./data/)
-- `latest-crawl-data.json` - Complete crawling results
-- `latest-test-results.json` - API testing results  
-- `latest-broken-links.json` - Broken links found
-- Timestamped versions of all data files
+### Key Features
+- **Expandable Test Cards**: Click any test result to view detailed request/response information
+- **Response Time Tracking**: See exact timing metrics for each API call
+- **Status Code Analysis**: Visual indicators for success/failure with detailed HTTP status information
+- **Request/Response Details**: Full headers, body content, and response data for debugging
+- **Multi-Site Organization**: Tabbed interface for testing multiple endpoints simultaneously
 
-### Reports (./reports/)
-- `REPORT.md` - **Main comprehensive QA report**
-- Timestamped report copies
+### Dashboard Files
+- `results-dashboard-autoload.html` - Interactive dashboard that auto-loads latest results
+- `results/` - Directory containing JSON test results and historical data
+- Test results automatically organized by timestamp for easy tracking
 
-## 📋 Report Structure
+### Dashboard Navigation
+- **Single Endpoint Tab**: Detailed results for individual endpoint testing
+- **Multi-Site Tab**: Organized results when testing multiple endpoints
+- **Expandable Details**: Click "Show Details" to see full request/response information
+- **Response Times**: Millisecond-precision timing for performance analysis
 
-The main report (`./reports/REPORT.md`) includes:
+## 📋 Test Results Structure
 
-### A. Executive Summary
-- Key metrics and statistics
-- Critical issues overview
-- Success rate analysis
+The enhanced testing system generates comprehensive data:
 
-### B. Snippet Test Results
-- Detailed test execution results
-- Pass/fail status for each code snippet
-- Request/response details
-- Error analysis
+### A. Individual Test Results
+- **Request Details**: Complete HTTP request information including headers, method, and body
+- **Response Analysis**: Full response data with status codes, headers, and body content
+- **Performance Metrics**: Response time tracking with millisecond precision
+- **Error Handling**: Detailed error information and debugging context
 
-### C. Documentation Discrepancy Report
-- Comparison between documented and actual API behavior
-- Evidence of discrepancies
-- Impact assessment
-- Recommendations for fixes
+### B. Multi-Site Test Results  
+- **Organized by Site**: Results grouped by target domain or endpoint category
+- **Batch Processing**: Multiple endpoints tested simultaneously with consolidated results
+- **Comparative Analysis**: Easy comparison across different API endpoints
+- **Success Rate Tracking**: Overall performance metrics across all tested endpoints
 
-### D. Broken Links & Errors
-- List of inaccessible URLs
-- Error details and status codes
+### C. Enhanced Dashboard Display
+- **Interactive Elements**: Expandable test cards with detailed information
+- **Visual Indicators**: Color-coded status indicators for quick assessment
+- **Search and Filter**: Easy navigation through large result sets
+- **Export Capabilities**: JSON data available for further analysis
 
-### E. Detailed Technical Findings
-- API endpoint analysis
-- Code snippet language distribution
-- Page coverage statistics
-
-### F. Recommendations & Action Items
-- Prioritized list of improvements
-- Specific actions for developers
-- Quality assurance suggestions
+### D. Historical Data Tracking
+- **Timestamped Results**: All test runs preserved with timestamps
+- **Performance Trends**: Track API performance over time
+- **Regression Detection**: Compare current results with historical data
+- **Data Persistence**: Results saved in organized directory structure
 
 ## ⚙️ Configuration
 
-The system can be configured by modifying `src/config.js`:
+The system can be configured within the interactive scraper:
 
 ### Key Configuration Options
 
 ```javascript
-{
-    // Crawling limits
-    MAX_PAGES: 50,
-    
-    // Request timeouts
-    REQUEST_TIMEOUT: 30000,
-    
-    // Test credentials (sandbox)
-    TEST_CREDENTIALS: {
-        username: 'globalpayments',
-        password: 'globalpayments',
-        // ... other test credentials
-    },
-    
-    // Test card numbers
-    TEST_CARDS: {
-        visa: '4263970000005262',
-        // ... other test cards
+// Mode Selection
+SCRAPING_MODES: {
+    SINGLE_ENDPOINT: "Test a specific API endpoint",
+    FULL_SITE_CRAWLING: "Navigate and test all discoverable endpoints"
+}
+
+// Global Payments Integration
+GLOBAL_PAYMENTS: {
+    BASE_URL: "https://developer.globalpay.com",
+    SANDBOX_ENDPOINTS: true,
+    NAVIGATION_SELECTORS: {
+        mainNav: '.nav-primary',
+        subNav: '.nav-secondary', 
+        endpoints: '.endpoint-link'
     }
 }
+
+// Testing Configuration
+TESTING: {
+    REQUEST_TIMEOUT: 30000,
+    MAX_CONCURRENT_REQUESTS: 5,
+    RETRY_ATTEMPTS: 3,
+    DETAILED_LOGGING: true
+}
+
+// Dashboard Configuration  
+DASHBOARD: {
+    AUTO_OPEN: true,
+    EXPANDABLE_DETAILS: true,
+    RESPONSE_TIME_PRECISION: 'ms',
+    THEME: 'modern'
+}
+```
 ```
 
 ## 🔧 Architecture
 
 ### Core Components
 
-1. **GlobalPaymentsCrawler** (`src/crawler.js`)
-   - Web crawling using Playwright
-   - Content extraction and parsing
-   - Link discovery and navigation
-   - Data structure generation
+1. **Enhanced API Scraper** (`api-scraper.js`)
+   - Dual-mode operation (single/full-site)
+   - Navigation discovery using Playwright
+   - Global Payments integration
+   - Interactive endpoint selection
+   - Comprehensive response capture
 
-2. **SnippetTester** (`src/snippet-tester.js`)
-   - Code snippet parsing and analysis
-   - API request construction
-   - Sandbox environment testing
-   - Response validation
+2. **Enhanced Dashboard Generator** (`create-enhanced-dashboard.js`)
+   - Interactive HTML dashboard creation
+   - Expandable test result cards
+   - Response time visualization
+   - Request/response detail display
+   - Multi-site result organization
 
-3. **ReportGenerator** (`src/report-generator.js`)
-   - Data analysis and correlation
-   - Discrepancy detection
-   - Markdown report generation
-   - Recommendation engine
-
-4. **FullAuditOrchestrator** (`src/full-audit.js`)
-   - Process coordination
-   - Error handling
-   - Progress reporting
+3. **Interactive Dashboard** (`results-dashboard-autoload.html`)
+   - Auto-loading latest test results
+   - Expandable test details
+   - Response time metrics
+   - Tabbed multi-site interface
+   - Modern responsive design
 
 ### Data Flow
 
 ```
-Developer Portal → Crawler → Raw Data → Tester → Test Results → Reporter → Final Report
+User Input → Mode Selection → Endpoint Discovery → API Testing → Response Capture → Dashboard Generation → Interactive Display
 ```
+
+### Enhanced Features
+
+- **Dual-Mode Architecture**: Seamlessly switch between single endpoint and full-site crawling
+- **Real-Time Dashboard**: Automatically generated and updated interactive results display
+- **Performance Tracking**: Detailed response time analysis with millisecond precision
+- **Comprehensive Logging**: Full request/response capture for debugging and analysis
 
 ## 🧪 Testing Approach
 
-### Code Snippet Processing
+### Dual-Mode Testing Strategy
 
-The system identifies and processes various types of code snippets:
+**Single Endpoint Mode:**
+- Direct API endpoint testing with comprehensive analysis
+- Detailed request/response capture
+- Performance timing with millisecond precision
+- Authentication handling and error analysis
 
-- **cURL commands** - Converted to HTTP requests
-- **JSON examples** - Used as request bodies
-- **XML/SOAP** - Sent as XML requests
-- **Language-specific code** - Analyzed for API patterns
+**Full-Site Crawling Mode:**
+- Automatic navigation discovery using Playwright browser automation
+- Global Payments developer portal integration
+- Batch processing of discovered endpoints
+- Comprehensive site-wide API testing
 
-### API Testing Strategy
+### API Testing Methodology
 
-- All requests directed to sandbox environment
-- Test credentials automatically injected
-- Multiple authentication methods attempted
-- Response validation against documentation
-- Error classification and reporting
+- **Smart Navigation**: Intelligently discovers API endpoints from documentation
+- **Authentication Integration**: Automatically handles Global Payments API authentication
+- **Request Construction**: Builds appropriate requests based on discovered endpoint patterns
+- **Response Analysis**: Comprehensive response validation and error handling
+- **Performance Monitoring**: Tracks response times and API performance metrics
 
-### Validation Criteria
+### Enhanced Validation Criteria
 
-A test is considered **PASSED** if:
-- HTTP status code is 2xx-4xx (not 5xx server errors)
-- Response structure matches expected format
-- No critical errors in response body
+A test provides comprehensive results including:
+- **Full Request Details**: Headers, method, body, and authentication
+- **Complete Response Data**: Status codes, headers, body content, and timing
+- **Error Context**: Detailed error information for debugging
+- **Performance Metrics**: Response time analysis for performance monitoring
 
 ## 📈 Metrics & Analysis
 
-The system tracks and reports on:
+The enhanced system tracks and reports comprehensive metrics:
 
-- **Coverage Metrics**: Pages crawled, snippets found
-- **Quality Metrics**: Test pass/fail rates, error types
-- **Accuracy Metrics**: Documentation vs. reality comparison
-- **Technical Metrics**: Response times, error rates
+- **Test Coverage**: Endpoints discovered and tested across single/multi-site modes
+- **Performance Analysis**: Response time distributions and API performance trends  
+- **Success Rates**: HTTP status code analysis with detailed error categorization
+- **Request/Response Data**: Complete capture of all API interactions for analysis
+- **Navigation Efficiency**: Crawling effectiveness and endpoint discovery rates
+
+### Dashboard Analytics
+
+- **Interactive Visualization**: Expandable test cards with detailed metrics
+- **Response Time Tracking**: Millisecond-precision performance monitoring
+- **Status Code Distribution**: Visual breakdown of success/error rates
+- **Historical Comparison**: Track API performance changes over time
+- **Detailed Debugging**: Full request/response data for troubleshooting
 
 ## 🔍 Troubleshooting
 
 ### Common Issues
 
-1. **No crawl data found**
-   - Ensure you run the crawler first: `npm run crawl`
-   - Check internet connectivity
+1. **No test results generated**
+   - Ensure you've run the scraper: `npm start`
+   - Check internet connectivity for API testing
+   - Verify target endpoint is accessible
 
-2. **Authentication failures**
-   - Verify sandbox credentials in `src/config.js`
-   - Check Global Payments sandbox status
+2. **Dashboard not loading**
+   - Run dashboard generator: `npm run dashboard`
+   - Check that results files exist in the `/results` directory
+   - Try opening dashboard manually: `npm run view`
 
-3. **High failure rates**
-   - Review the detailed test results in the report
-   - Check if sandbox environment is operational
-   - Verify test data configuration
+3. **Authentication issues**
+   - Configure API credentials during scraper setup
+   - Verify Global Payments API access
+   - Check sandbox environment availability
+
+4. **Navigation discovery problems**
+   - Ensure target site structure matches expected patterns
+   - Check browser automation permissions
+   - Verify Playwright dependencies are installed
 
 ### Debug Mode
 
-Enable detailed logging by setting in `src/config.js`:
-```javascript
-CRAWLING: {
-    HEADLESS_MODE: false, // Shows browser during crawling
-}
-```
+Enable detailed logging during testing:
+- Select verbose output when prompted during scraper execution
+- Check browser console for navigation issues
+- Review generated JSON files for detailed error information
+
+### Performance Issues
+
+If testing is slow or failing:
+- Reduce concurrent request limits
+- Check network connectivity and API response times
+- Verify target endpoints are responding correctly
 
 ## 🛡️ Security & Privacy
 
-- Uses only public sandbox credentials
-- No production data or credentials
-- Respects robots.txt and rate limiting
-- All testing done against approved sandbox environment
+- **Sandbox Testing**: All API testing directed to appropriate sandbox environments
+- **Credential Management**: Interactive setup with secure credential handling
+- **Rate Limiting**: Respects API rate limits and implements appropriate delays
+- **Data Privacy**: Test data and results stored locally, no external data transmission
+- **Browser Automation**: Uses Playwright with appropriate security settings
 
 ## 📝 Sample Output
 
-After running the full audit, you'll see:
+After running the enhanced API scraper, you'll see:
 
 ```
-🎉 FULL QA AUDIT COMPLETED SUCCESSFULLY
-========================================
+🚀 ENHANCED API SCRAPER
+========================
 
-⏱️  Total Duration: 180 seconds
-📂 Generated Files:
-   📄 ./data/latest-crawl-data.json - Scraped portal data
-   🧪 ./data/latest-test-results.json - API test results  
-   🔗 ./data/latest-broken-links.json - Broken links found
-   📊 ./reports/REPORT.md - Comprehensive QA report
+✨ Mode Selection:
+   1. Single Endpoint Testing - Test a specific API endpoint
+   2. Full-Site Crawling - Navigate and test discovered endpoints
+   
+🎯 Selected Mode: Full-Site Crawling
 
-🔍 Next Steps:
-   1. Review the main report: ./reports/REPORT.md
-   2. Address any critical issues identified
-   3. Fix broken links and failed code snippets
-   4. Consider implementing automated testing pipeline
+🔍 Navigation Discovery:
+   📂 Discovered 15 API endpoints from Global Payments developer portal
+   🌐 Processing batch requests with performance tracking
+   
+📊 Test Results Generated:
+   ✅ 12/15 endpoints tested successfully
+   ⏱️  Average response time: 245ms
+   📄 results/api-test-results-2024-01-15-14-30.json created
+   
+🎨 Enhanced Dashboard:
+   📊 results-dashboard-autoload.html generated
+   🚀 Opening interactive dashboard...
+
+🎉 TESTING COMPLETE
+===================
+📂 View Results: Open results-dashboard-autoload.html
+📈 Performance: Check response time metrics in dashboard
+🔍 Debug: Expand test cards for detailed request/response information
 ```
 
 ## 🤝 Contributing
 
-To extend or modify the system:
+To extend or modify the enhanced system:
 
-1. **Add new test types**: Extend `SnippetTester` class
-2. **Improve crawling**: Modify `GlobalPaymentsCrawler` selectors
-3. **Enhance reporting**: Add new sections to `ReportGenerator`
-4. **Configure for other APIs**: Update `config.js` settings
+1. **Add new testing modes**: Extend mode selection in `api-scraper.js`
+2. **Enhance navigation discovery**: Modify Playwright selectors for different sites
+3. **Improve dashboard features**: Add new interactive elements to `create-enhanced-dashboard.js`
+4. **Add new API integrations**: Configure additional API testing capabilities
+5. **Extend performance metrics**: Add new tracking and analysis features
+
+### Development Setup
+
+```bash
+# Install dependencies
+npm install
+
+# Run in development mode
+npm start
+
+# Generate dashboard for testing
+npm run dashboard
+
+# Clean development files
+npm run clean
+```
+
+## 📄 Documentation
+
+For detailed information about specific components:
+- [Dashboard README](./DASHBOARD-README.md) - Comprehensive dashboard documentation
+- [Credentials Setup](./CREDENTIALS-SETUP.md) - API credential configuration guide
 
 ## 📄 License
 
-This QA automation system is provided as-is for educational and quality assurance purposes.
+This enhanced API testing suite is provided as-is for development and testing purposes.
