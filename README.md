@@ -39,25 +39,39 @@ This enhanced system provides flexible API testing capabilities:
 
 ### 🔑 API Testing Setup
 
-**Configure your Global Payments API credentials for comprehensive testing:**
+**The system provides flexible credential management:**
 
+**Option 1: Interactive Setup (Recommended)**
 ```bash
-# Start the interactive scraper
 npm start
-
-# The system will guide you through:
-# 1. Mode selection (single endpoint vs full-site crawling)  
-# 2. Credential configuration
-# 3. Target endpoint selection
-# 4. Automatic dashboard generation
 ```
+The system will automatically:
+1. Check for existing credentials in `config/credentials.json`
+2. Prompt you to enter credentials if none are found
+3. Offer to save credentials for future use
+4. Guide you through mode selection and testing
+
+**Option 2: Manual Configuration**
+Create or edit `config/credentials.json`:
+```json
+{
+  "globalPayments": {
+    "appId": "your-app-id",
+    "appKey": "your-app-key", 
+    "environment": "sandbox",
+    "baseUrl": "https://apis.sandbox.globalpay.com",
+    "version": "2021-03-22"
+  }
+}
+```
+
+**Option 3: Default Mode**
+If no credentials are provided, the system uses default sandbox credentials with limited functionality.
 
 **Supported Testing Modes:**
 - ✅ **Single Endpoint**: Test a specific API endpoint with detailed analysis
 - ✅ **Full-Site Crawling**: Navigate and test all discoverable endpoints automatically
 - ✅ **Multi-Site Testing**: Test multiple endpoints with organized tabbed results
-
-📖 **Detailed setup guide**: See [CREDENTIALS-SETUP.md](./CREDENTIALS-SETUP.md)
 
 ### Running the Enhanced API Scraper
 
@@ -341,12 +355,6 @@ After running the enhanced API scraper, you'll see:
 🎨 Enhanced Dashboard:
    📊 results-dashboard-autoload.html generated
    🚀 Opening interactive dashboard...
-
-🎉 TESTING COMPLETE
-===================
-📂 View Results: Open results-dashboard-autoload.html
-📈 Performance: Check response time metrics in dashboard
-🔍 Debug: Expand test cards for detailed request/response information
 ```
 
 ## 🤝 Contributing

@@ -1,5 +1,7 @@
 import { firefox } from 'playwright';
 import readline from 'readline';
+import { promises as fs } from 'fs';
+import path from 'path';
 
 /**
  * Multi-Endpoint API Response Generator
@@ -28,6 +30,113 @@ function getUserInput(question) {
             resolve(sanitized);
         });
     });
+}
+
+/**
+ * Load credentials from config file or prompt user
+ */
+async function loadCredentials() {
+    const credentialsPath = path.join(process.cwd(), 'config', 'credentials.json');
+    
+    try {
+        // Try to load existing credentials
+        const credentialsData = await fs.readFile(credentialsPath, 'utf8');
+        const credentials = JSON.parse(credentialsData);
+        
+        // Check if Global Payments credentials are configured
+        if (credentials.globalPayments && 
+            credentials.globalPayments.appId && 
+            credentials.globalPayments.appKey) {
+            console.log('✅ Found existing Global Payments credentials');
+            return {
+                accessToken: `Bearer ${generateAccessToken(credentials.globalPayments)}`,
+                apiVersion: credentials.globalPayments.version || "2021-03-22",
+                baseUrl: credentials.globalPayments.baseUrl || "https://apis.sandbox.globalpay.com",
+                appId: credentials.globalPayments.appId,
+                appKey: credentials.globalPayments.appKey
+            };
+        }
+    } catch (error) {
+        console.log('ℹ️  No existing credentials found or credentials file not accessible');
+    }
+    
+    // Prompt user for credentials
+    console.log('\n🔐 API Credentials Setup');
+    console.log('========================');
+    console.log('To test the Global Payments API endpoints, we need your API credentials.');
+    console.log('You can find these in your Global Payments developer portal.');
+    console.log('');
+    
+    const useCredentials = await getUserInput('Do you want to provide API credentials? (y/n): ');
+    
+    if (useCredentials.toLowerCase() !== 'y' && useCredentials.toLowerCase() !== 'yes') {
+        console.log('⚠️  Proceeding without credentials - API tests may have limited functionality');
+        return {
+            accessToken: "Bearer DCKbRy6gtN6gWJI2ja0B7e3POtbb", // Default sandbox token
+            apiVersion: "2021-03-22",
+            baseUrl: "https://apis.sandbox.globalpay.com"
+        };
+    }
+    
+    console.log('\nEnter your Global Payments API credentials:');
+    const appId = await getUserInput('App ID: ');
+    const appKey = await getUserInput('App Key: ');
+    
+    // Always use sandbox environment for this application
+    const environment = 'sandbox';
+    const baseUrl = 'https://apis.sandbox.globalpay.com';
+    
+    const newCredentials = {
+        appId,
+        appKey,
+        environment,
+        baseUrl,
+        version: "2021-03-22"
+    };
+    
+    // Ask if user wants to save credentials
+    const saveCredentials = await getUserInput('Save these credentials for future use? (y/n): ');
+    
+    if (saveCredentials.toLowerCase() === 'y' || saveCredentials.toLowerCase() === 'yes') {
+        try {
+            // Ensure config directory exists
+            await fs.mkdir(path.dirname(credentialsPath), { recursive: true });
+            
+            // Load existing config or create new
+            let existingConfig = {};
+            try {
+                const existingData = await fs.readFile(credentialsPath, 'utf8');
+                existingConfig = JSON.parse(existingData);
+            } catch (e) {
+                // File doesn't exist, that's okay
+            }
+            
+            // Update with new credentials
+            existingConfig.globalPayments = newCredentials;
+            
+            await fs.writeFile(credentialsPath, JSON.stringify(existingConfig, null, 2));
+            console.log('✅ Credentials saved to config/credentials.json');
+        } catch (error) {
+            console.log('⚠️  Could not save credentials:', error.message);
+        }
+    }
+    
+    return {
+        accessToken: `Bearer ${generateAccessToken(newCredentials)}`,
+        apiVersion: newCredentials.version,
+        baseUrl: newCredentials.baseUrl,
+        appId: newCredentials.appId,
+        appKey: newCredentials.appKey
+    };
+}
+
+/**
+ * Generate access token from app credentials (simplified for demo)
+ */
+function generateAccessToken(credentials) {
+    // In a real implementation, you would make an OAuth call to get a real token
+    // For demo purposes, we'll use a combination of the credentials
+    return `${credentials.appId.substring(0, 8)}${credentials.appKey.substring(0, 8)}Token`;
 }
 
 /**
@@ -96,6 +205,9 @@ async function collectEndpointFromUser() {
 async function generateAPIResponse() {
     console.log('🚀 API Response Generator Starting...\n');
     
+    // Load or prompt for credentials first
+    const credentials = await loadCredentials();
+    
     // Collect endpoint information from user
     const config = await collectEndpointFromUser();
     
@@ -104,11 +216,14 @@ async function generateAPIResponse() {
         return;
     }
 
+    // Add credentials to config
+    config.credentials = credentials;
+
     if (config.mode === 'fullsite') {
         console.log(`\n� Ready to crawl full site: ${config.url}`);
         console.log('Press Ctrl+C to cancel at any time.');
         
-        await runFullSiteMode(config.url);
+        await runFullSiteMode(config.url, credentials);
     } else {
         console.log(`\n🎯 Ready to test endpoint: ${config.url}`);
         console.log('Press Ctrl+C to cancel at any time.');
@@ -269,7 +384,7 @@ function isLikelyAPIEndpoint(url, text) {
 /**
  * Run full site mode - crawl all discovered API pages
  */
-async function runFullSiteMode(startUrl) {
+async function runFullSiteMode(startUrl, credentials) {
     const { firefox } = await import('playwright');
     
     const browser = await firefox.launch({ 
@@ -295,8 +410,8 @@ async function runFullSiteMode(startUrl) {
         
         console.log(`\n📊 Processing ${discoveredLinks.length} discovered API pages...`);
         
-        // Configuration for tokenized credentials
-        const tokenizedCredentials = {
+        // Use provided credentials instead of hardcoded ones
+        const tokenizedCredentials = credentials || {
             accessToken: "Bearer DCKbRy6gtN6gWJI2ja0B7e3POtbb",
             apiVersion: "2021-03-22", 
             baseUrl: "https://apis.sandbox.globalpay.com"
@@ -482,8 +597,8 @@ async function generateAPIResponses(endpoint) {
     });
     const page = await browser.newPage();
 
-    // Configuration for tokenized credentials
-    const tokenizedCredentials = {
+    // Use credentials from config or fallback to default
+    const tokenizedCredentials = endpoint.credentials || {
         accessToken: "Bearer DCKbRy6gtN6gWJI2ja0B7e3POtbb", // Sandbox token
         apiVersion: "2021-03-22",
         baseUrl: "https://apis.sandbox.globalpay.com"
