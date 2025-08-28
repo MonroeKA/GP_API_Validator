@@ -115,9 +115,12 @@ After running tests, you'll have access to an interactive dashboard with:
 - **Multi-Site Organization**: Tabbed interface for testing multiple endpoints simultaneously
 
 ### Dashboard Files
-- `results-dashboard-autoload.html` - Interactive dashboard that auto-loads latest results
+- `results-dashboard-template.html` - Clean template for version control (no sensitive data)
+- `results-dashboard-autoload.html` - Generated dashboard with real test results (ignored by git)
 - `results/` - Directory containing JSON test results and historical data
 - Test results automatically organized by timestamp for easy tracking
+
+**Security Note**: The actual dashboard with test data (`results-dashboard-autoload.html`) is excluded from version control to prevent sensitive information from being committed to GitHub.
 
 ### Dashboard Navigation
 - **Single Endpoint Tab**: Detailed results for individual endpoint testing

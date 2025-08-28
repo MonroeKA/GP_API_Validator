@@ -9,6 +9,9 @@ api-responses-*.json
 multi-endpoint-api-responses-*.json
 realistic-api-test-*.json
 
+# Generated dashboard with real data (use template instead)
+results-dashboard-autoload.html
+
 # Playwright browsers
 .playwright/
 
