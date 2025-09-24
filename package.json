@@ -4,7 +4,7 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "test": "node api-scraper.js",
+    "start": "node server.js",
     "scrape": "node api-scraper.js",
     "scrape:single": "echo '1' | node api-scraper.js",
     "scrape:fullsite": "echo '2' | node api-scraper.js",

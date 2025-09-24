@@ -32,10 +32,13 @@ This enhanced system provides flexible API testing capabilities:
 
 | Command | Description |
 |---------|-------------|
-| `npm start` | Launch the main API scraper with mode selection |
-| `npm run dashboard` | Create enhanced dashboard from latest results |
-| `npm run view` | Open the interactive results dashboard |
-| `npm run clean` | Clean up temporary files and old results |
+| `npm start` | Start localhost server to serve dashboard and files |
+| `npm run scrape` | Run the API scraper with mode selection |
+| `npm run scrape:single` | Run single endpoint API test |
+| `npm run scrape:fullsite` | Run full site crawl with navigation discovery |
+| `npm run update-dashboard` | Update dashboard with latest results |
+| `npm run create-dashboard` | Generate fresh dashboard |
+| `npm run view-results` | Open current dashboard |
 
 ### 🔑 API Testing Setup
 
@@ -93,15 +96,39 @@ This will launch the interactive system that guides you through:
 You can also run specific components:
 
 ```bash
+# Start localhost server to serve dashboard and files
+npm start
+
 # Generate enhanced dashboard from existing results
-npm run dashboard
+npm run create-dashboard
 
-# Open the interactive dashboard in your browser
-npm run view
+# Update dashboard with latest results and open
+npm run update-dashboard
 
-# Clean up old results and temporary files
-npm run clean
+# View current dashboard in browser
+npm run view-results
 ```
+
+## 🌐 Local Server
+
+The project includes a built-in static file server for easy access to dashboard files:
+
+### Server Features
+- **Dashboard Access**: Serve the interactive dashboard at `http://localhost:3000`
+- **File Serving**: Access all project files through the browser
+- **Auto-redirect**: Root path (`/`) automatically serves the dashboard template
+- **Security**: Prevents directory traversal attacks
+- **Content Types**: Properly serves HTML, JS, CSS, JSON, and image files
+
+### Starting the Server
+```bash
+npm start
+```
+
+This will start the server on port 3000. You can then access:
+- **Dashboard**: `http://localhost:3000/results-dashboard-template.html`
+- **API Scraper**: `http://localhost:3000/api-scraper.js`
+- **Any file**: `http://localhost:3000/filename.ext`
 
 ## 📊 Enhanced Dashboard Features
 

@@ -47,7 +47,7 @@ async function updateDashboard() {
             if (process.argv.includes('--open')) {
                 console.log('🚀 Opening dashboard in browser...');
                 const opener = process.platform === 'darwin' ? 'open' : 
-                              process.platform === 'win32' ? 'start' : 'xdg-open';
+                              process.platform === 'win32' ? 'cmd /c start ""' : 'xdg-open';
                 exec(`${opener} results-dashboard-autoload.html`);
             }
         }

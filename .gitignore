@@ -12,6 +12,9 @@ realistic-api-test-*.json
 # Generated dashboard with real data (use template instead)
 results-dashboard-autoload.html
 
+# Cleanup Summary
+CLEANUP-SUMMARY.md
+
 # Playwright browsers
 .playwright/
 

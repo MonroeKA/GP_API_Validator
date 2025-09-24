@@ -1359,14 +1359,15 @@ async function updateDashboardAndOpen() {
         console.log('✅ Dashboard updated successfully!');
         
         // Auto-open the results dashboard
-        const dashboardPath = new URL('results-dashboard-autoload.html', import.meta.url).pathname;
+        const dashboardPath = path.resolve('results-dashboard-autoload.html');
         
         // Platform-specific open command
         let openCommand;
         if (process.platform === 'darwin') {
             openCommand = `open "${dashboardPath}"`;
         } else if (process.platform === 'win32') {
-            openCommand = `start "${dashboardPath}"`;
+            // Use cmd /c to ensure proper start command execution without terminal window
+            openCommand = `cmd /c start "" "${dashboardPath}"`;
         } else {
             openCommand = `xdg-open "${dashboardPath}"`;
         }
