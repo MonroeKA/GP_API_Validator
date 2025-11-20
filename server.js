@@ -25,7 +25,7 @@ app.get('/', (req, res) => {
 // Main API endpoint for extraction and testing
 app.post('/api/extract', async (req, res) => {
     try {
-        const { url, runLiveTest } = req.body;
+        const { url, runLiveTest, saveResults } = req.body;
         
         if (!url) {
             return res.status(400).json({ error: 'URL is required' });
@@ -44,9 +44,9 @@ app.post('/api/extract', async (req, res) => {
             testResults = await testAllSnippets(extractedData);
         }
         
-        // Save results ONLY if running tests (not for extract-only mode)
+        // Save results if requested
         let resultsFile = null;
-        if (runLiveTest) {
+        if (saveResults) {
             const timestamp = Date.now();
             resultsFile = `extraction-results-${timestamp}.json`;
             await fs.writeFile(resultsFile, JSON.stringify({
@@ -59,7 +59,7 @@ app.post('/api/extract', async (req, res) => {
             
             console.log(`💾 Results saved to: ${resultsFile}`);
         } else {
-            console.log(`ℹ️  Extract-only mode: not saving results file`);
+            console.log(`ℹ️  Saving disabled: results not saved to file`);
         }
         
         res.json({
@@ -261,6 +261,24 @@ async function extractFromEndpoint(page) {
         
         await page.waitForTimeout(2000);
         
+        // Dismiss cookie consent banner if present (blocks clicks)
+        try {
+            const cookieBanner = await page.locator('#onetrust-consent-sdk').first();
+            const isVisible = await cookieBanner.isVisible().catch(() => false);
+            if (isVisible) {
+                // Try to find and click accept button
+                const acceptButton = await page.locator('button#onetrust-accept-btn-handler').first();
+                const acceptVisible = await acceptButton.isVisible().catch(() => false);
+                if (acceptVisible) {
+                    await acceptButton.click();
+                    console.log('   ✓ Dismissed cookie consent banner');
+                    await page.waitForTimeout(1000);
+                }
+            }
+        } catch (e) {
+            // Cookie banner not present or already dismissed
+        }
+        
         console.log('   🔄 Starting comprehensive code extraction...');
         
         // ===== TASK 2: HANDLE ALL DROPDOWNS & LANGUAGES =====
@@ -272,13 +290,15 @@ async function extractFromEndpoint(page) {
         let languageDropdown = null;
         let languageDropdownText = '';
         
+        console.log(`      🔍 Scanning ${allButtons.length} buttons for language dropdown...`);
+        
         for (const btn of allButtons) {
             try {
                 const btnText = await btn.textContent();
                 const hasRequestSwitcherClass = await btn.evaluate((el) => el.classList.contains('request-switcher'));
                 
                 // Match language buttons: have "request-switcher" class AND text is a language name
-                if (hasRequestSwitcherClass && btnText && btnText.trim().match(/^(JSON|CURL|Python|JavaScript|Java|PHP|Ruby|Go|Node)$/i)) {
+                if (hasRequestSwitcherClass && btnText && btnText.trim().match(/^(JSON|CURL|cURL|Python|JavaScript|Java|PHP|Ruby|Go|Node)$/i)) {
                     languageDropdown = btn;
                     languageDropdownText = btnText.trim();
                     console.log(`      ✓ Found language dropdown: "${languageDropdownText}"`);
@@ -315,27 +335,59 @@ async function extractFromEndpoint(page) {
         let exampleDropdown = null;
         let exampleNames = [];
         
+        console.log(`      🔍 Scanning ${allButtons.length} buttons for example dropdown...`);
+        
         for (const btn of allButtons) {
             try {
                 const btnText = await btn.textContent();
                 const hasMenu = await btn.getAttribute('aria-haspopup');
+                const classes = await btn.getAttribute('class');
                 
-                if (btnText && btnText.includes('xample') && hasMenu === 'menu') {
+                // Debug: log buttons with aria-haspopup
+                if (hasMenu === 'menu') {
+                    console.log(`      🔍 Button with menu: "${btnText?.trim()}" | Classes: ${classes?.substring(0, 80)}...`);
+                }
+                
+                // Match the specific example dropdown button by its characteristics:
+                // - Has aria-haspopup="menu"
+                // - Has border-n-grey-76 class (distinguishes from language/version dropdowns)
+                // - Is bp5-minimal with rounded styling
+                // - Does NOT contain "Switch To" or "Viewing" (those are API version switchers)
+                const isExampleDropdown = hasMenu === 'menu' && 
+                                         classes?.includes('border-n-grey-76') &&
+                                         btnText && 
+                                         !btnText.includes('Switch To') &&
+                                         !btnText.includes('Viewing');
+                
+                if (isExampleDropdown) {
                     exampleDropdown = btn;
                     console.log(`      ✓ Found example dropdown: "${btnText?.trim()}"`);
                     
                     // Click to get examples
                     await btn.click();
-                    await page.waitForTimeout(800);
+                    await page.waitForTimeout(1000);
                     
-                    const exampleOptions = await page.locator('a[role="menuitem"]').allTextContents();
-                    exampleNames = exampleOptions
-                        .map(text => text.trim())
-                        .filter(text => text && text.length > 0);
+                    // Example menu items are in <ul class="api-explorer__example-list bp5-menu">
+                    // Each item is an <a role="menuitem"> with text in a <div>
+                    const exampleMenu = await page.locator('ul.api-explorer__example-list').first();
+                    const exampleItems = await exampleMenu.locator('a[role="menuitem"]').all();
                     
-                    console.log(`      ✓ Found ${exampleNames.length} examples: ${exampleNames.slice(0, 3).join(', ')}${exampleNames.length > 3 ? '...' : ''}`);
+                    console.log(`      🔍 Found ${exampleItems.length} items in api-explorer__example-list`);
                     
-                    // Close dropdown
+                    for (const item of exampleItems) {
+                        try {
+                            const itemText = await item.textContent();
+                            if (itemText && itemText.trim()) {
+                                exampleNames.push(itemText.trim());
+                            }
+                        } catch (e) {
+                            // Skip
+                        }
+                    }
+                    
+                    console.log(`      ✓ Found ${exampleNames.length} examples: ${exampleNames.slice(0, 5).join(', ')}${exampleNames.length > 5 ? '...' : ''}`);
+                    
+                    // Close dropdown by clicking button again
                     await btn.click();
                     await page.waitForTimeout(500);
                     break;
@@ -396,28 +448,63 @@ async function extractFromEndpoint(page) {
         // Handle case with no examples (single example)
         const examplesArray = exampleNames.length > 0 ? exampleNames : ['default'];
         
-        for (const exampleName of examplesArray) {
+        console.log(`      ℹ️  Processing ${examplesArray.length} example(s)...`);
+        
+        for (let exampleIndex = 0; exampleIndex < examplesArray.length; exampleIndex++) {
+            const exampleName = examplesArray[exampleIndex];
+            
             if (exampleName !== 'default') {
+                console.log(`\n   📂 Example ${exampleIndex + 1}/${examplesArray.length}: "${exampleName}"`);
+                
                 try {
                     // Click example dropdown and select this example
                     if (exampleDropdown) {
-                        await exampleDropdown.click();
-                        await page.waitForTimeout(800);
+                        console.log(`      🔄 Switching to example: "${exampleName}"...`);
                         
-                        const options = await page.locator('a[role="menuitem"]').all();
-                        for (const opt of options) {
-                            const optText = await opt.textContent();
-                            if (optText?.trim() === exampleName) {
-                                await opt.click();
-                                await page.waitForTimeout(1200);
+                        // Dismiss cookie banner again if it reappeared
+                        try {
+                            const cookieButton = await page.locator('button#onetrust-accept-btn-handler').first();
+                            const isVisible = await cookieButton.isVisible({ timeout: 500 }).catch(() => false);
+                            if (isVisible) {
+                                await cookieButton.click();
+                                await page.waitForTimeout(500);
+                                console.log(`      ✓ Dismissed cookie banner`);
+                            }
+                        } catch (e) {
+                            // No cookie banner
+                        }
+                        
+                        await exampleDropdown.click();
+                        await page.waitForTimeout(1000);
+                        
+                        // Find the example in the api-explorer__example-list menu
+                        const exampleMenu = await page.locator('ul.api-explorer__example-list').first();
+                        const exampleItems = await exampleMenu.locator('a[role="menuitem"]').all();
+                        
+                        let foundExample = false;
+                        for (const item of exampleItems) {
+                            const itemText = await item.textContent();
+                            if (itemText?.trim() === exampleName) {
+                                // Force click to bypass any overlays
+                                await item.click({ force: true });
+                                await page.waitForTimeout(2000); // Wait longer for example to fully load
+                                foundExample = true;
+                                console.log(`      ✓ Switched to example: "${exampleName}"`);
                                 break;
                             }
+                        }
+                        
+                        if (!foundExample) {
+                            console.log(`      ⚠️  Could not find example "${exampleName}" in dropdown, skipping`);
+                            continue;
                         }
                     }
                 } catch (e) {
                     console.log(`      ⚠️ Error selecting example "${exampleName}": ${e.message}`);
                     continue;
                 }
+            } else {
+                console.log(`\n   📂 Using default example (no switching needed)`);
             }
             
             // IMPORTANT: Extract tabs for EACH language separately

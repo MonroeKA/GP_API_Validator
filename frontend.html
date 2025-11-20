@@ -362,12 +362,15 @@
                     </label>
                 </div>
 
-                <button type="submit" class="btn btn-primary">
-                    🔍 Extract & Test
-                </button>
+                <div class="form-group">
+                    <input type="checkbox" id="saveResults" checked>
+                    <label for="saveResults" style="display: inline; margin-left: 8px;">
+                        Save extraction results to file
+                    </label>
+                </div>
 
-                <button type="button" class="btn btn-primary" onclick="extractOnly()">
-                    💾 Extract Only (No Test)
+                <button type="submit" class="btn btn-primary">
+                    🔍 Extract
                 </button>
                 
                 <button type="button" class="btn btn-secondary" onclick="clearAll()">
@@ -448,6 +451,7 @@
             
             const url = document.getElementById('apiUrl').value;
             const runLiveTest = document.getElementById('runLiveTest').checked;
+            const saveResults = document.getElementById('saveResults').checked;
             
             if (!url) {
                 showStatus('Please enter a valid URL', 'error');
@@ -465,7 +469,8 @@
                     },
                     body: JSON.stringify({
                         url: url,
-                        runLiveTest: runLiveTest
+                        runLiveTest: runLiveTest,
+                        saveResults: saveResults
                     })
                 });
                 
@@ -724,17 +729,10 @@
                 </div>
                 ` : ''}
 
-                ${data.body ? `
-                <div class="data-card">
-                    <h3>📦 Request Body</h3>
-                    <div class="code-block">${JSON.stringify(data.body, null, 2)}</div>
-                </div>
-                ` : ''}
-
                 <div class="data-card">
                     <h3>💻 Code Snippets (${Object.keys(data.codeSnippets || {}).length} found)</h3>
                     
-                    <!-- Group snippets by language and tab, showing only unique content -->
+                    <!-- Group snippets by example name -->
                     ${(() => {
                         const snippets = data.codeSnippets || {};
                         const labels = snippets._labels || {};
@@ -751,44 +749,109 @@
                             'node': '🟢'
                         };
                         
-                        // Group snippets by language
+                        // Group snippets by example name (extracted from key)
                         const grouped = {};
                         Object.entries(snippets).forEach(([key, code]) => {
                             // Skip metadata key
                             if (key === '_labels') return;
                             
+                            // Extract example name from key
+                            // Keys look like: json_url___query_create_a_paylink, curl_create_a_paylink
                             const parts = key.split('_');
-                            const lang = parts[0]; // First part is language (curl, json, etc)
-                            if (!grouped[lang]) grouped[lang] = [];
+                            const lang = parts[0]; // First part is language
+                            
+                            // Extract example name from key
+                            // Key format examples:
+                            // - json_url___query_create_a_paylink -> "create_a_paylink"
+                            // - json_headers_create_a_paylink -> "create_a_paylink"  
+                            // - curl_create_a_paylink -> "create_a_paylink"
+                            
+                            // Strategy: Find the last occurrence of a known tab name and take everything after it
+                            const tabNames = ['url___query', 'headers', 'body'];
+                            let exampleName = 'default';
+                            
+                            // Try to find tab name in the key string
+                            let foundTabName = null;
+                            let tabPosition = -1;
+                            
+                            for (const tabName of tabNames) {
+                                const pos = key.indexOf(`_${tabName}_`);
+                                if (pos > tabPosition) {
+                                    tabPosition = pos;
+                                    foundTabName = tabName;
+                                }
+                            }
+                            
+                            if (foundTabName) {
+                                // Extract everything after the tab name
+                                const afterTab = key.substring(tabPosition + foundTabName.length + 2); // +2 for the underscores
+                                if (afterTab) {
+                                    exampleName = afterTab;
+                                }
+                            } else {
+                                // No tab name found (likely curl), skip just the language
+                                exampleName = parts.slice(1).join('_');
+                            }
+                            
+                            // Convert snake_case to Title Case matching documentation portal
+                            const displayName = exampleName === 'default' ? 'Default Example' : 
+                                exampleName.split('_')
+                                    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                                    .join(' ');
+                            
+                            if (!grouped[displayName]) {
+                                grouped[displayName] = {};
+                            }
+                            if (!grouped[displayName][lang]) {
+                                grouped[displayName][lang] = [];
+                            }
                             
                             // Get the actual section title from labels if available
                             const sectionTitle = labels[key] || key;
                             
-                            grouped[lang].push({ key, code, sectionTitle });
+                            grouped[displayName][lang].push({ key, code, sectionTitle });
                         });
                         
-                        return Object.entries(grouped).map(([lang, items]) => {
-                            // Check if this is a single-block language (only 1 item and label matches language name)
-                            const isSingleBlock = items.length === 1 && items[0].sectionTitle === lang.toUpperCase();
-                            
+                        let exampleIndex = 0;
+                        return Object.entries(grouped).map(([exampleName, languages]) => {
+                            exampleIndex++;
                             return `
-                            <div style="margin: 20px 0; border-left: 4px solid #007bff; padding-left: 15px;">
-                                <h4 style="color: #007bff; margin: 0 0 15px 0; display: flex; align-items: center; gap: 8px;">
-                                    <span>${languageIcon[lang] || '📝'}</span>
-                                    ${lang.toUpperCase()}
-                                </h4>
-                                ${isSingleBlock ? 
-                                    // Single block - show code directly without section label
-                                    `<div class="code-block" style="font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; font-size: 0.9em; margin: 0;">${escapeHtml(items[0].code)}</div>`
-                                    :
-                                    // Multi-tab language - show each section with its label
-                                    items.map(({code, sectionTitle}) => `
-                                        <div style="margin-bottom: 20px; padding: 10px; background: #f8f9fa; border-radius: 6px; border-left: 3px solid #6c757d;">
-                                            <small style="color: #6c757d; display: block; margin-bottom: 8px; font-weight: 600; text-transform: uppercase; font-size: 0.85em;">${sectionTitle || 'Content'}</small>
-                                            <div class="code-block" style="font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; font-size: 0.9em; margin: 0;">${escapeHtml(code)}</div>
+                            <div style="margin: 20px 0; border: 2px solid #e9ecef; border-radius: 8px; overflow: hidden;">
+                                <div 
+                                    onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'; this.querySelector('.collapse-icon').textContent = this.nextElementSibling.style.display === 'none' ? '▶' : '▼';"
+                                    style="cursor: pointer; background: linear-gradient(to right, #f8f9fa, #ffffff); padding: 15px 20px; display: flex; align-items: center; justify-content: space-between; user-select: none; border-bottom: 1px solid #e9ecef;"
+                                >
+                                    <h4 style="color: #495057; margin: 0; font-size: 1.2em; display: flex; align-items: center; gap: 10px;">
+                                        <span>📂</span>
+                                        ${exampleName}
+                                    </h4>
+                                    <span class="collapse-icon" style="font-size: 1.2em; color: #6c757d;">▼</span>
+                                </div>
+                                
+                                <div style="padding: 20px; background: #ffffff;">
+                                    ${Object.entries(languages).map(([lang, items]) => {
+                                        // Check if this is a single-block language
+                                        const isSingleBlock = items.length === 1 && items[0].sectionTitle === lang.toUpperCase();
+                                        
+                                        return `
+                                        <div style="margin: 15px 0; border-left: 4px solid #007bff; padding-left: 15px;">
+                                            <h5 style="color: #007bff; margin: 0 0 12px 0; display: flex; align-items: center; gap: 8px;">
+                                                <span>${languageIcon[lang] || '📝'}</span>
+                                                ${lang.toUpperCase()}
+                                            </h5>
+                                            ${isSingleBlock ? 
+                                                `<div class="code-block" style="font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; font-size: 0.9em; margin: 0;">${escapeHtml(items[0].code)}</div>`
+                                                :
+                                                items.map(({code, sectionTitle}) => `
+                                                    <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 6px; border-left: 3px solid #6c757d;">
+                                                        <small style="color: #6c757d; display: block; margin-bottom: 8px; font-weight: 600; text-transform: uppercase; font-size: 0.85em;">${sectionTitle || 'Content'}</small>
+                                                        <div class="code-block" style="font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; font-size: 0.9em; margin: 0;">${escapeHtml(code)}</div>
+                                                    </div>
+                                                `).join('')
+                                            }
                                         </div>
-                                    `).join('')
-                                }
+                                    `}).join('')}
+                                </div>
                             </div>
                         `}).join('');
                     })()}
