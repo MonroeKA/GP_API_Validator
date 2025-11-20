@@ -8,9 +8,19 @@ yarn-error.log*
 api-responses-*.json
 multi-endpoint-api-responses-*.json
 realistic-api-test-*.json
+extraction-results-*.json
+extraction-export-*.json
 
 # Generated dashboard with real data (use template instead)
 results-dashboard-autoload.html
+
+# Test files
+test-*.js
+
+# Sensitive files
+.env
+config/credentials.json
+gp-access-token.json
 
 # Cleanup Summary
 CLEANUP-SUMMARY.md

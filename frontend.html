@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Payments API Scraper</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 15px 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 500;
+            color: #6c757d;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .tab-button.active {
+            color: #495057;
+            background: white;
+        }
+
+        .tab-button:hover {
+            background: #e9ecef;
+        }
+
+        .tab-button.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: #007bff;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 30px;
+            min-height: 500px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 123, 255, 0.3);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+            margin-left: 10px;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-secondary:disabled {
+            background: #b8b8b8;
+            cursor: not-allowed;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-weight: 500;
+        }
+
+        .status.loading {
+            background: #d1ecf1;
+            color: #0c5460;
+            border-left: 4px solid #17a2b8;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border-left: 4px solid #28a745;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border-left: 4px solid #dc3545;
+        }
+
+        .data-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+            border-left: 4px solid #007bff;
+        }
+
+        .data-card h3 {
+            color: #495057;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .data-item {
+            margin: 10px 0;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+            border: 1px solid #e9ecef;
+        }
+
+        .data-label {
+            font-weight: 600;
+            color: #6c757d;
+            display: inline-block;
+            width: 120px;
+        }
+
+        .data-value {
+            color: #495057;
+        }
+
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            overflow-x: auto;
+            margin: 15px 0;
+            white-space: pre-wrap;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
+            padding: 25px;
+            border-radius: 12px;
+            border: 1px solid #e9ecef;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .metric-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #007bff;
+            margin-bottom: 10px;
+        }
+
+        .metric-label {
+            color: #6c757d;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .badge-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .badge-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .badge-error {
+            background: #dc3545;
+            color: white;
+        }
+
+        .badge-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #007bff, #0056b3);
+            transition: width 0.5s ease;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Global Payments API Scraper</h1>
+            <p>Extract and test API endpoints from Global Payments documentation</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-button active" onclick="switchTab('input')">📝 Input URL</button>
+            <button class="tab-button" onclick="switchTab('extracted')">📊 Extracted Data</button>
+            <button class="tab-button" onclick="switchTab('results')">📈 Test Results</button>
+        </div>
+
+        <!-- Input Tab -->
+        <div id="input" class="tab-content active">
+            <h2>Enter API Documentation URL</h2>
+            <p style="color: #6c757d; margin-bottom: 25px;">
+                Paste any Global Payments API documentation URL to extract and test the endpoint.
+            </p>
+
+            <form onsubmit="processUrl(event)">
+                <div class="form-group">
+                    <label for="apiUrl">API Documentation URL:</label>
+                    <input 
+                        type="url" 
+                        id="apiUrl" 
+                        class="form-control" 
+                        placeholder="https://developer.globalpayments.com/api/..."
+                        value="https://developer.globalpayments.com/api/accounts#/Get%20Merchant's%20Account%20info/getMerchantAccounts"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <input type="checkbox" id="runLiveTest" checked>
+                    <label for="runLiveTest" style="display: inline; margin-left: 8px;">
+                        Run live API test after extraction
+                    </label>
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    🔍 Extract & Test
+                </button>
+
+                <button type="button" class="btn btn-primary" onclick="extractOnly()">
+                    💾 Extract Only (No Test)
+                </button>
+                
+                <button type="button" class="btn btn-secondary" onclick="clearAll()">
+                    🗑️ Clear All
+                </button>
+            </form>
+
+            <div style="margin-top: 30px; padding-top: 30px; border-top: 2px solid #e9ecef;">
+                <h3 style="margin-bottom: 15px; color: #495057;">📂 Load Previous Results</h3>
+                <div class="form-group">
+                    <label for="resultsFile">Select a saved results file:</label>
+                    <input 
+                        type="file" 
+                        id="resultsFile" 
+                        class="form-control" 
+                        accept=".json"
+                        onchange="loadResultsFile(event)"
+                    >
+                </div>
+                <button type="button" class="btn btn-secondary" onclick="fetchAvailableResults()">
+                    📋 Show Available Files
+                </button>
+            </div>
+
+            <div id="processingStatus"></div>
+        </div>
+
+        <!-- Extracted Data Tab -->
+        <div id="extracted" class="tab-content">
+            <h2>📊 Extracted API Data</h2>
+            <div id="extractedContent">
+                <p style="color: #6c757d; text-align: center; margin-top: 50px;">
+                    No data extracted yet. Please process a URL first.
+                </p>
+            </div>
+        </div>
+
+        <!-- Test Results Tab -->
+        <div id="results" class="tab-content">
+            <h2>📈 Live API Test Results</h2>
+            <div id="resultsContent">
+                <p style="color: #6c757d; text-align: center; margin-top: 50px;">
+                    No test results available. Please run an extraction with live testing enabled.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentData = null;
+        let testResults = null;
+
+        function switchTab(tabName, event = null) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Remove active class from all buttons
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            
+            // Add active class to selected button if event provided
+            if (event && event.target) {
+                event.target.classList.add('active');
+            } else {
+                // Programmatically activate the button
+                document.querySelector(`[onclick*="${tabName}"]`)?.classList.add('active');
+            }
+        }
+
+        async function processUrl(event) {
+            event.preventDefault();
+            
+            const url = document.getElementById('apiUrl').value;
+            const runLiveTest = document.getElementById('runLiveTest').checked;
+            
+            if (!url) {
+                showStatus('Please enter a valid URL', 'error');
+                return;
+            }
+            
+            showStatus('🔄 Processing URL and extracting data...', 'loading');
+            
+            try {
+                // Simulate API call to backend
+                const response = await fetch('/api/extract', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        url: url,
+                        runLiveTest: runLiveTest
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to process URL');
+                }
+                
+                const data = await response.json();
+                
+                currentData = data.extractedData;
+                testResults = data.testResults;
+                
+                // Store metadata for display
+                if (data.savedFile) {
+                    currentData.savedFile = data.savedFile;
+                    currentData.timestamp = data.timestamp;
+                }
+                if (testResults) {
+                    testResults.savedFile = data.savedFile;
+                    testResults.timestamp = data.timestamp;
+                    // Include response examples and extraction log in test results
+                    testResults.responseExamples = currentData.responseExamples;
+                    testResults.extractionLog = currentData.extractionLog;
+                }
+                
+                showStatus('✅ Successfully extracted and processed API data!', 'success');
+                
+                // Update extracted data tab
+                displayExtractedData(currentData);
+                
+                // Update results tab if live test was run
+                if (testResults) {
+                    displayTestResults(testResults);
+                }
+                
+                // Switch to extracted data tab
+                switchTab('extracted');
+                
+            } catch (error) {
+                // For demo purposes, show mock data
+                showMockData();
+                showStatus('✅ Demo data loaded (backend not connected)', 'success');
+                switchTab('extracted');
+            }
+        }
+
+        async function extractOnly() {
+            const url = document.getElementById('apiUrl').value;
+            
+            if (!url) {
+                showStatus('Please enter a valid URL', 'error');
+                return;
+            }
+            
+            showStatus('💾 Extracting data only (no tests)...', 'loading');
+            
+            try {
+                // Call extraction endpoint without running tests
+                const response = await fetch('/api/extract', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        url: url,
+                        runLiveTest: false  // CRITICAL: Only extract, no testing
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to extract data');
+                }
+                
+                const data = await response.json();
+                
+                currentData = data.extractedData;
+                
+                // Store metadata
+                if (data.savedFile) {
+                    currentData.savedFile = data.savedFile;
+                    currentData.timestamp = data.timestamp;
+                }
+                
+                showStatus(`✅ Extraction complete! Saved to: ${data.savedFile || 'memory'}`, 'success');
+                
+                // Download the raw JSON for inspection
+                downloadExtractedJSON(data);
+                
+                // Update extracted data tab
+                displayExtractedData(currentData);
+                
+                // Switch to extracted data tab
+                switchTab('extracted');
+                
+            } catch (error) {
+                showStatus(`❌ Extraction failed: ${error.message}`, 'error');
+            }
+        }
+
+        function downloadExtractedJSON(data) {
+            // Create a blob with the extracted data
+            const jsonString = JSON.stringify(data, null, 2);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            
+            // Create download link
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `extraction-export-${Date.now()}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            
+            console.log('📥 Raw extraction JSON downloaded');
+        }
+
+        async function loadResultsFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            try {
+                const text = await file.text();
+                const data = JSON.parse(text);
+
+                // Load the data into the application
+                if (data.extractedData) {
+                    currentData = data.extractedData;
+                    displayExtractedData(currentData);
+                }
+
+                if (data.testResults) {
+                    testResults = data.testResults;
+                    displayTestResults(testResults);
+                }
+
+                showStatus(`✅ Loaded results from ${file.name}`, 'success');
+                switchTab('extracted');
+            } catch (error) {
+                showStatus(`❌ Error loading file: ${error.message}`, 'error');
+            }
+        }
+
+        async function fetchAvailableResults() {
+            try {
+                const response = await fetch('/api/list-results');
+                const files = await response.json();
+                
+                if (files.length === 0) {
+                    showStatus('ℹ️ No saved results found', 'info');
+                    return;
+                }
+
+                const fileList = files.map((f, i) => `${i + 1}. ${f.name} (${f.date})`).join('\n');
+                alert(`Available Results Files:\n\n${fileList}\n\nUse the file selector above to load one.`);
+            } catch (error) {
+                showStatus(`❌ Error fetching file list: ${error.message}`, 'error');
+            }
+        }
+
+        function showMockData() {
+            // Mock extracted data
+            currentData = {
+                method: 'GET',
+                url: 'https://apis.sandbox.globalpay.com/ucp/accounts',
+                headers: {
+                    'Authorization': 'Bearer {access_token}',
+                    'X-GP-Version': '2021-03-22',
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: null,
+                codeSnippets: {
+                    headers: '{\n  "authorization": "Bearer G3FA4TuYGCBiCWs4YpzrALGCYXZJ",\n  "x-gp-version": "2021-03-22"\n}',
+                    response_example: '{\n  "total_record_count": 1,\n  "current_page_size": 1,\n  "merchant_id": "MER_c4c0df11039c48a9b63701adeaa296c3",\n  "merchant_name": "Sandbox_merchant_2"\n}'
+                },
+                responseExamples: {
+                    success: {
+                        "total_record_count": 1,
+                        "current_page_size": 1,
+                        "merchant_id": "MER_c4c0df11039c48a9b63701adeaa296c3",
+                        "merchant_name": "Sandbox_merchant_2"
+                    }
+                }
+            };
+
+            // Mock test results
+            testResults = {
+                statusCode: 200,
+                statusText: 'OK',
+                responseTime: 327,
+                success: true,
+                body: {
+                    "total_record_count": 0,
+                    "current_page_size": 0,
+                    "merchant_id": "MER_7e3e2c7df34f42819b3edee31022ee3f",
+                    "merchant_name": "Sandbox_merchant_3"
+                },
+                validation: {
+                    'Network connectivity': true,
+                    'Endpoint exists': true,
+                    'Authentication works': true,
+                    'Request structure valid': true,
+                    'Structured API response': true,
+                    'GP API response format': true,
+                    'Reasonable response time': true,
+                    'API integration functional': true
+                }
+            };
+
+            displayExtractedData(currentData);
+            // Don't display test results on load - only when user runs a real test
+        }
+
+        function displayExtractedData(data) {
+            const container = document.getElementById('extractedContent');
+            
+            const html = `
+                <div class="data-card">
+                    <h3>🔧 API Endpoint</h3>
+                    <div class="data-item">
+                        <span class="data-label">Method:</span>
+                        <span class="data-value badge ${data.method === 'GET' ? 'badge-success' : 'badge-warning'}">${data.method || 'Not detected'}</span>
+                    </div>
+                    <div class="data-item">
+                        <span class="data-label">URL:</span>
+                        <span class="data-value">${data.url || 'Not detected'}</span>
+                    </div>
+                </div>
+
+                ${data.extractionLog ? `
+                <div class="data-card">
+                    <h3>📋 Extraction Process Log</h3>
+                    <div class="extraction-log" style="max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 0.9em; line-height: 1.4;">
+                        ${data.extractionLog.split('\n').filter(line => line.trim()).map(line => {
+                            let className = 'log-default';
+                            let icon = '';
+                            
+                            if (line.includes('✅')) { className = 'log-success'; icon = '✅'; }
+                            else if (line.includes('⚠️')) { className = 'log-warning'; icon = '⚠️'; }
+                            else if (line.includes('❌')) { className = 'log-error'; icon = '❌'; }
+                            else if (line.includes('🔍') || line.includes('📋') || line.includes('🖱️')) { 
+                                className = 'log-info'; 
+                                icon = line.match(/(🔍|📋|🖱️)/)?.[0] || '';
+                            }
+                            
+                            return `<div class="${className}" style="
+                                padding: 2px 0; 
+                                color: ${className === 'log-success' ? '#28a745' : 
+                                      className === 'log-warning' ? '#ffc107' : 
+                                      className === 'log-error' ? '#dc3545' : 
+                                      className === 'log-info' ? '#007bff' : '#6c757d'};
+                            ">${escapeHtml(line)}</div>`;
+                        }).join('')}
+                    </div>
+                </div>
+                ` : ''}
+
+                ${data.body ? `
+                <div class="data-card">
+                    <h3>📦 Request Body</h3>
+                    <div class="code-block">${JSON.stringify(data.body, null, 2)}</div>
+                </div>
+                ` : ''}
+
+                <div class="data-card">
+                    <h3>💻 Code Snippets (${Object.keys(data.codeSnippets || {}).length} found)</h3>
+                    
+                    <!-- Group snippets by language and tab, showing only unique content -->
+                    ${(() => {
+                        const snippets = data.codeSnippets || {};
+                        const labels = snippets._labels || {};
+                        const languageIcon = {
+                            'json': '📄',
+                            'curl': '🌐',
+                            'javascript': '🟨',
+                            'python': '🐍',
+                            'php': '🐘',
+                            'java': '☕',
+                            'c#': '🔷',
+                            'ruby': '💎',
+                            'go': '🐹',
+                            'node': '🟢'
+                        };
+                        
+                        // Group snippets by language
+                        const grouped = {};
+                        Object.entries(snippets).forEach(([key, code]) => {
+                            // Skip metadata key
+                            if (key === '_labels') return;
+                            
+                            const parts = key.split('_');
+                            const lang = parts[0]; // First part is language (curl, json, etc)
+                            if (!grouped[lang]) grouped[lang] = [];
+                            
+                            // Get the actual section title from labels if available
+                            const sectionTitle = labels[key] || key;
+                            
+                            grouped[lang].push({ key, code, sectionTitle });
+                        });
+                        
+                        return Object.entries(grouped).map(([lang, items]) => {
+                            // Check if this is a single-block language (only 1 item and label matches language name)
+                            const isSingleBlock = items.length === 1 && items[0].sectionTitle === lang.toUpperCase();
+                            
+                            return `
+                            <div style="margin: 20px 0; border-left: 4px solid #007bff; padding-left: 15px;">
+                                <h4 style="color: #007bff; margin: 0 0 15px 0; display: flex; align-items: center; gap: 8px;">
+                                    <span>${languageIcon[lang] || '📝'}</span>
+                                    ${lang.toUpperCase()}
+                                </h4>
+                                ${isSingleBlock ? 
+                                    // Single block - show code directly without section label
+                                    `<div class="code-block" style="font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; font-size: 0.9em; margin: 0;">${escapeHtml(items[0].code)}</div>`
+                                    :
+                                    // Multi-tab language - show each section with its label
+                                    items.map(({code, sectionTitle}) => `
+                                        <div style="margin-bottom: 20px; padding: 10px; background: #f8f9fa; border-radius: 6px; border-left: 3px solid #6c757d;">
+                                            <small style="color: #6c757d; display: block; margin-bottom: 8px; font-weight: 600; text-transform: uppercase; font-size: 0.85em;">${sectionTitle || 'Content'}</small>
+                                            <div class="code-block" style="font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; font-size: 0.9em; margin: 0;">${escapeHtml(code)}</div>
+                                        </div>
+                                    `).join('')
+                                }
+                            </div>
+                        `}).join('');
+                    })()}
+                </div>
+
+                
+            `;
+            
+            container.innerHTML = html;
+        }
+
+        function displayTestResults(results) {
+            const container = document.getElementById('resultsContent');
+            
+            console.log('displayTestResults called with:', results);
+            console.log('Has languageTests?', results?.languageTests);
+            
+            if (!results || !results.languageTests) {
+                container.innerHTML = '<p style="color: #6c757d; text-align: center; margin-top: 50px;">No test results available.</p>';
+                return;
+            }
+            
+            const languageTests = Object.entries(results.languageTests || {});
+            const documentedCodes = results.documentedStatusCodes || [];
+            
+            const html = `
+                <div class="data-card">
+                    <h3>📚 Portal Documentation</h3>
+                    <div class="data-item">
+                        <span class="data-label">Available Languages:</span>
+                        <span class="data-value">${(results.availableLanguages || []).join(', ').toUpperCase() || 'None detected'}</span>
+                    </div>
+                    <div class="data-item">
+                        <span class="data-label">Documented Status Codes:</span>
+                        <span class="data-value">
+                            ${documentedCodes.map(code => {
+                                const badgeClass = code === '200' ? 'badge-success' : 
+                                                  code === '403' ? 'badge-error' :
+                                                  code.startsWith('4') ? 'badge-warning' : 
+                                                  code.startsWith('5') ? 'badge-error' : 'badge-secondary';
+                                return `<span class="badge ${badgeClass}" style="margin: 2px;">${code}</span>`;
+                            }).join(' ') || 'None found'}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="data-card">
+                    <h3>🧪 Language Snippet Test Results (${languageTests.length} tested)</h3>
+                    ${languageTests.length > 0 ? languageTests.map(([lang, test]) => {
+                        const languageIcon = {
+                            'json': '📄',
+                            'curl': '🌐',
+                            'javascript': '🟨',
+                            'python': '🐍',
+                            'php': '🐘',
+                            'java': '☕',
+                            'c#': '🔷',
+                            'ruby': '💎',
+                            'go': '🐹',
+                            'node': '🟢'
+                        };
+                        
+                        const icon = languageIcon[lang.toLowerCase()] || '📝';
+                        const badgeClass = test.success ? 'badge-success' : 'badge-error';
+                        const matchBadge = test.matchesDocumentation ? 
+                            '<span class="badge badge-success" style="margin-left: 10px;">✓ Matches Docs</span>' : 
+                            '<span class="badge badge-warning" style="margin-left: 10px;">⚠️ Undocumented Code</span>';
+                        
+                        return `
+                        <div style="margin: 20px 0; padding: 15px; border: 1px solid #dee2e6; border-radius: 8px; background: #f8f9fa;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                                <h4 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                                    <span>${icon}</span>
+                                    <span>${lang.toUpperCase()}</span>
+                                </h4>
+                                <div>
+                                    <span class="badge ${badgeClass}" style="font-size: 1.1em; padding: 8px 12px;">${test.statusCode || 'ERROR'}</span>
+                                    ${matchBadge}
+                                </div>
+                            </div>
+                            <div class="data-item" style="margin: 5px 0;">
+                                <span class="data-label">Status:</span>
+                                <span class="data-value">${test.statusCode} ${test.statusText || ''}</span>
+                            </div>
+                            <div class="data-item" style="margin: 5px 0;">
+                                <span class="data-label">Response Time:</span>
+                                <span class="data-value">${test.responseTime || 0}ms</span>
+                            </div>
+                            ${test.error ? `
+                            <div class="data-item" style="margin: 5px 0;">
+                                <span class="data-label">Error:</span>
+                                <span class="data-value" style="color: #dc3545;">${test.error}</span>
+                            </div>
+                            ` : ''}
+                        </div>
+                        `;
+                    }).join('') : '<p style="color: #6c757d; font-style: italic;">No language tests executed</p>'}
+                </div>
+
+                ${results.statusCodeTests && Object.keys(results.statusCodeTests).length > 0 ? `
+                <div class="data-card">
+                    <h3>🎯 Status Code Validation Tests</h3>
+                    <p style="color: #6c757d; margin-bottom: 15px; font-size: 0.95em;">
+                        Testing scenarios to trigger each documented status code
+                    </p>
+                    
+                    ${Object.entries(results.statusCodeTests).map(([code, test]) => {
+                        const matched = test.matched;
+                        const skipped = test.skipped;
+                        const badgeClass = code === '200' ? 'badge-success' : 
+                                          code === '403' ? 'badge-error' :
+                                          code.startsWith('4') ? 'badge-warning' : 
+                                          code.startsWith('5') ? 'badge-error' : 'badge-secondary';
+                        
+                        return `
+                        <div style="margin: 20px 0; padding: 15px; border: 1px solid #dee2e6; border-radius: 8px; background: ${skipped ? '#f5f5f5' : matched ? '#f0f9ff' : '#fff8f0'};">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                                <h4 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                                    <span>${skipped ? '⏭️' : matched ? '✅' : '⚠️'}</span>
+                                    <span>HTTP ${code}</span>
+                                </h4>
+                                <div>
+                                    <span class="badge ${badgeClass}" style="font-size: 1.1em; padding: 8px 12px;">
+                                        ${test.actualCode || 'N/A'}
+                                    </span>
+                                    ${skipped ? 
+                                        '<span class="badge badge-secondary" style="margin-left: 10px;">Skipped</span>' :
+                                        matched ? 
+                                            '<span class="badge badge-success" style="margin-left: 10px;">✓ Matched</span>' : 
+                                            '<span class="badge badge-warning" style="margin-left: 10px;">Different Code</span>'
+                                    }
+                                </div>
+                            </div>
+                            <div class="data-item" style="margin: 5px 0;">
+                                <span class="data-label">Test Scenario:</span>
+                                <span class="data-value">${test.scenario}</span>
+                            </div>
+                            ${skipped ? `
+                            <div class="data-item" style="margin: 5px 0;">
+                                <span class="data-label">Reason:</span>
+                                <span class="data-value" style="color: #6c757d; font-style: italic;">${test.reason}</span>
+                            </div>
+                            ` : `
+                            <div class="data-item" style="margin: 5px 0;">
+                                <span class="data-label">Expected:</span>
+                                <span class="data-value">${test.expectedCode} - ${test.statusText || ''}</span>
+                            </div>
+                            <div class="data-item" style="margin: 5px 0;">
+                                <span class="data-label">Actual Result:</span>
+                                <span class="data-value">${test.actualCode} ${test.statusText || ''} (${test.responseTime}ms)</span>
+                            </div>
+                            ${test.responseBody && typeof test.responseBody === 'object' ? `
+                            <div class="data-item" style="margin: 5px 0;">
+                                <span class="data-label">Response:</span>
+                                <span class="data-value" style="font-family: monospace; font-size: 0.85em;">
+                                    ${test.responseBody.error_code || test.responseBody.message || JSON.stringify(test.responseBody).substring(0, 100)}
+                                </span>
+                            </div>
+                            ` : ''}
+                            `}
+                        </div>
+                        `;
+                    }).join('')}
+                </div>
+                ` : ''}
+            `;
+            
+            container.innerHTML = html;
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('processingStatus');
+            statusDiv.innerHTML = `<div class="status ${type}">
+                ${type === 'loading' ? '<span class="loading-spinner"></span>' : ''}
+                ${message}
+            </div>`;
+            
+            if (type !== 'loading') {
+                setTimeout(() => {
+                    statusDiv.innerHTML = '';
+                }, 5000);
+            }
+        }
+
+        function clearAll() {
+            document.getElementById('apiUrl').value = '';
+            document.getElementById('runLiveTest').checked = true;
+            document.getElementById('processingStatus').innerHTML = '';
+            document.getElementById('extractedContent').innerHTML = '<p style="color: #6c757d; text-align: center; margin-top: 50px;">No data extracted yet. Please process a URL first.</p>';
+            document.getElementById('resultsContent').innerHTML = '<p style="color: #6c757d; text-align: center; margin-top: 50px;">No test results available. Please run an extraction with live testing enabled.</p>';
+            
+            currentData = null;
+            testResults = null;
+            
+            switchTab('input');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Page loaded - no auto demo data
+    </script>
+</body>
+</html>

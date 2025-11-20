@@ -1,424 +1,149 @@
-# Global Payments API Testing Suite
+# Global Payments API Scraper
 
-A comprehensive API testing and scraping system designed to test Global Payments API endpoints with dual-mode operation: single endpoint testing or full-site navigation crawling with detailed interactive dashboards.
+Automated tool to extract and test API endpoints from Global Payments developer documentation.
 
-## 🎯 Overview
+## Features
 
-This enhanced system provides flexible API testing capabilities:
+- **Automated Extraction**: Scrapes API documentation using Playwright
+  - Extracts code snippets in multiple languages (JSON, cURL)
+  - Captures request structure (URL, headers, body)
+  - Extracts documented HTTP status codes
+  - Handles multi-tab JSON structure (URL & QUERY, HEADERS, BODY)
+  - Single-block extraction for cURL commands
 
-1. **Dual-Mode Scraper**: Choose between single endpoint testing or full-site navigation crawling
-2. **Interactive Dashboard**: Detailed test results with expandable request/response information
-3. **Response Time Tracking**: Monitor API performance with detailed timing metrics  
-4. **Multi-Site Testing**: Test multiple endpoints simultaneously with organized results
-5. **Enhanced Reporting**: Comprehensive test data with status codes, headers, and full responses
+- **Live API Testing**: Tests extracted endpoints against the actual API
+  - Generates fresh OAuth 2.0 tokens
+  - Tests multiple HTTP status code scenarios
+  - Validates response structure and format
+  - Records test results with timestamps
 
-## 🚀 Quick Start
+- **Web Dashboard**: Interactive UI to view results
+  - View extracted API data
+  - Display code snippets with syntax highlighting
+  - Compare documented vs actual responses
+  - Load historical test results
 
-### Prerequisites
+## Setup
 
-- Node.js 18+ installed
-- npm package manager
-- Internet connection for API testing and scraping
-
-### Installation
-
-1. Clone or download this project
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-### Available Commands
-
-| Command | Description |
-|---------|-------------|
-| `npm start` | Start localhost server to serve dashboard and files |
-| `npm run scrape` | Run the API scraper with mode selection |
-| `npm run scrape:single` | Run single endpoint API test |
-| `npm run scrape:fullsite` | Run full site crawl with navigation discovery |
-| `npm run update-dashboard` | Update dashboard with latest results |
-| `npm run create-dashboard` | Generate fresh dashboard |
-| `npm run view-results` | Open current dashboard |
-
-### 🔑 API Testing Setup
-
-**The system provides flexible credential management:**
-
-**Option 1: Interactive Setup (Recommended)**
+1. Install dependencies:
 ```bash
-npm start
-```
-The system will automatically:
-1. Check for existing credentials in `config/credentials.json`
-2. Prompt you to enter credentials if none are found
-3. Offer to save credentials for future use
-4. Guide you through mode selection and testing
-
-**Option 2: Manual Configuration**
-Create or edit `config/credentials.json`:
-```json
-{
-  "globalPayments": {
-    "appId": "your-app-id",
-    "appKey": "your-app-key", 
-    "environment": "sandbox",
-    "baseUrl": "https://apis.sandbox.globalpay.com",
-    "version": "2021-03-22"
-  }
-}
-```
-
-**Option 3: Default Mode**
-If no credentials are provided, the system uses default sandbox credentials with limited functionality.
-
-**Supported Testing Modes:**
-- ✅ **Single Endpoint**: Test a specific API endpoint with detailed analysis
-- ✅ **Full-Site Crawling**: Navigate and test all discoverable endpoints automatically
-- ✅ **Multi-Site Testing**: Test multiple endpoints with organized tabbed results
-
-### Running the Enhanced API Scraper
-
-Execute the main scraping and testing system:
-
-```bash
-npm start
-```
-
-This will launch the interactive system that guides you through:
-- **Mode Selection**: Choose between single endpoint or full-site crawling
-- **Target Configuration**: Enter API endpoint or let the system discover endpoints
-- **Credential Setup**: Configure authentication for comprehensive testing  
-- **Automated Testing**: Execute tests with detailed response capture
-- **Dashboard Generation**: Automatically create interactive results dashboard
-
-### Running Individual Components
-
-You can also run specific components:
-
-```bash
-# Start localhost server to serve dashboard and files
-npm start
-
-# Generate enhanced dashboard from existing results
-npm run create-dashboard
-
-# Update dashboard with latest results and open
-npm run update-dashboard
-
-# View current dashboard in browser
-npm run view-results
-```
-
-## 🌐 Local Server
-
-The project includes a built-in static file server for easy access to dashboard files:
-
-### Server Features
-- **Dashboard Access**: Serve the interactive dashboard at `http://localhost:3000`
-- **File Serving**: Access all project files through the browser
-- **Auto-redirect**: Root path (`/`) automatically serves the dashboard template
-- **Security**: Prevents directory traversal attacks
-- **Content Types**: Properly serves HTML, JS, CSS, JSON, and image files
-
-### Starting the Server
-```bash
-npm start
-```
-
-This will start the server on port 3000. You can then access:
-- **Dashboard**: `http://localhost:3000/results-dashboard-template.html`
-- **API Scraper**: `http://localhost:3000/api-scraper.js`
-- **Any file**: `http://localhost:3000/filename.ext`
-
-## 📊 Enhanced Dashboard Features
-
-After running tests, you'll have access to an interactive dashboard with:
-
-### Key Features
-- **Expandable Test Cards**: Click any test result to view detailed request/response information
-- **Response Time Tracking**: See exact timing metrics for each API call
-- **Status Code Analysis**: Visual indicators for success/failure with detailed HTTP status information
-- **Request/Response Details**: Full headers, body content, and response data for debugging
-- **Multi-Site Organization**: Tabbed interface for testing multiple endpoints simultaneously
-
-### Dashboard Files
-- `results-dashboard-template.html` - Clean template for version control (no sensitive data)
-- `results-dashboard-autoload.html` - Generated dashboard with real test results (ignored by git)
-- `results/` - Directory containing JSON test results and historical data
-- Test results automatically organized by timestamp for easy tracking
-
-**Security Note**: The actual dashboard with test data (`results-dashboard-autoload.html`) is excluded from version control to prevent sensitive information from being committed to GitHub.
-
-### Dashboard Navigation
-- **Single Endpoint Tab**: Detailed results for individual endpoint testing
-- **Multi-Site Tab**: Organized results when testing multiple endpoints
-- **Expandable Details**: Click "Show Details" to see full request/response information
-- **Response Times**: Millisecond-precision timing for performance analysis
-
-## 📋 Test Results Structure
-
-The enhanced testing system generates comprehensive data:
-
-### A. Individual Test Results
-- **Request Details**: Complete HTTP request information including headers, method, and body
-- **Response Analysis**: Full response data with status codes, headers, and body content
-- **Performance Metrics**: Response time tracking with millisecond precision
-- **Error Handling**: Detailed error information and debugging context
-
-### B. Multi-Site Test Results  
-- **Organized by Site**: Results grouped by target domain or endpoint category
-- **Batch Processing**: Multiple endpoints tested simultaneously with consolidated results
-- **Comparative Analysis**: Easy comparison across different API endpoints
-- **Success Rate Tracking**: Overall performance metrics across all tested endpoints
-
-### C. Enhanced Dashboard Display
-- **Interactive Elements**: Expandable test cards with detailed information
-- **Visual Indicators**: Color-coded status indicators for quick assessment
-- **Search and Filter**: Easy navigation through large result sets
-- **Export Capabilities**: JSON data available for further analysis
-
-### D. Historical Data Tracking
-- **Timestamped Results**: All test runs preserved with timestamps
-- **Performance Trends**: Track API performance over time
-- **Regression Detection**: Compare current results with historical data
-- **Data Persistence**: Results saved in organized directory structure
-
-## ⚙️ Configuration
-
-The system can be configured within the interactive scraper:
-
-### Key Configuration Options
-
-```javascript
-// Mode Selection
-SCRAPING_MODES: {
-    SINGLE_ENDPOINT: "Test a specific API endpoint",
-    FULL_SITE_CRAWLING: "Navigate and test all discoverable endpoints"
-}
-
-// Global Payments Integration
-GLOBAL_PAYMENTS: {
-    BASE_URL: "https://developer.globalpay.com",
-    SANDBOX_ENDPOINTS: true,
-    NAVIGATION_SELECTORS: {
-        mainNav: '.nav-primary',
-        subNav: '.nav-secondary', 
-        endpoints: '.endpoint-link'
-    }
-}
-
-// Testing Configuration
-TESTING: {
-    REQUEST_TIMEOUT: 30000,
-    MAX_CONCURRENT_REQUESTS: 5,
-    RETRY_ATTEMPTS: 3,
-    DETAILED_LOGGING: true
-}
-
-// Dashboard Configuration  
-DASHBOARD: {
-    AUTO_OPEN: true,
-    EXPANDABLE_DETAILS: true,
-    RESPONSE_TIME_PRECISION: 'ms',
-    THEME: 'modern'
-}
-```
-```
-
-## 🔧 Architecture
-
-### Core Components
-
-1. **Enhanced API Scraper** (`api-scraper.js`)
-   - Dual-mode operation (single/full-site)
-   - Navigation discovery using Playwright
-   - Global Payments integration
-   - Interactive endpoint selection
-   - Comprehensive response capture
-
-2. **Enhanced Dashboard Generator** (`create-enhanced-dashboard.js`)
-   - Interactive HTML dashboard creation
-   - Expandable test result cards
-   - Response time visualization
-   - Request/response detail display
-   - Multi-site result organization
-
-3. **Interactive Dashboard** (`results-dashboard-autoload.html`)
-   - Auto-loading latest test results
-   - Expandable test details
-   - Response time metrics
-   - Tabbed multi-site interface
-   - Modern responsive design
-
-### Data Flow
-
-```
-User Input → Mode Selection → Endpoint Discovery → API Testing → Response Capture → Dashboard Generation → Interactive Display
-```
-
-### Enhanced Features
-
-- **Dual-Mode Architecture**: Seamlessly switch between single endpoint and full-site crawling
-- **Real-Time Dashboard**: Automatically generated and updated interactive results display
-- **Performance Tracking**: Detailed response time analysis with millisecond precision
-- **Comprehensive Logging**: Full request/response capture for debugging and analysis
-
-## 🧪 Testing Approach
-
-### Dual-Mode Testing Strategy
-
-**Single Endpoint Mode:**
-- Direct API endpoint testing with comprehensive analysis
-- Detailed request/response capture
-- Performance timing with millisecond precision
-- Authentication handling and error analysis
-
-**Full-Site Crawling Mode:**
-- Automatic navigation discovery using Playwright browser automation
-- Global Payments developer portal integration
-- Batch processing of discovered endpoints
-- Comprehensive site-wide API testing
-
-### API Testing Methodology
-
-- **Smart Navigation**: Intelligently discovers API endpoints from documentation
-- **Authentication Integration**: Automatically handles Global Payments API authentication
-- **Request Construction**: Builds appropriate requests based on discovered endpoint patterns
-- **Response Analysis**: Comprehensive response validation and error handling
-- **Performance Monitoring**: Tracks response times and API performance metrics
-
-### Enhanced Validation Criteria
-
-A test provides comprehensive results including:
-- **Full Request Details**: Headers, method, body, and authentication
-- **Complete Response Data**: Status codes, headers, body content, and timing
-- **Error Context**: Detailed error information for debugging
-- **Performance Metrics**: Response time analysis for performance monitoring
-
-## 📈 Metrics & Analysis
-
-The enhanced system tracks and reports comprehensive metrics:
-
-- **Test Coverage**: Endpoints discovered and tested across single/multi-site modes
-- **Performance Analysis**: Response time distributions and API performance trends  
-- **Success Rates**: HTTP status code analysis with detailed error categorization
-- **Request/Response Data**: Complete capture of all API interactions for analysis
-- **Navigation Efficiency**: Crawling effectiveness and endpoint discovery rates
-
-### Dashboard Analytics
-
-- **Interactive Visualization**: Expandable test cards with detailed metrics
-- **Response Time Tracking**: Millisecond-precision performance monitoring
-- **Status Code Distribution**: Visual breakdown of success/error rates
-- **Historical Comparison**: Track API performance changes over time
-- **Detailed Debugging**: Full request/response data for troubleshooting
-
-## 🔍 Troubleshooting
-
-### Common Issues
-
-1. **No test results generated**
-   - Ensure you've run the scraper: `npm start`
-   - Check internet connectivity for API testing
-   - Verify target endpoint is accessible
-
-2. **Dashboard not loading**
-   - Run dashboard generator: `npm run dashboard`
-   - Check that results files exist in the `/results` directory
-   - Try opening dashboard manually: `npm run view`
-
-3. **Authentication issues**
-   - Configure API credentials during scraper setup
-   - Verify Global Payments API access
-   - Check sandbox environment availability
-
-4. **Navigation discovery problems**
-   - Ensure target site structure matches expected patterns
-   - Check browser automation permissions
-   - Verify Playwright dependencies are installed
-
-### Debug Mode
-
-Enable detailed logging during testing:
-- Select verbose output when prompted during scraper execution
-- Check browser console for navigation issues
-- Review generated JSON files for detailed error information
-
-### Performance Issues
-
-If testing is slow or failing:
-- Reduce concurrent request limits
-- Check network connectivity and API response times
-- Verify target endpoints are responding correctly
-
-## 🛡️ Security & Privacy
-
-- **Sandbox Testing**: All API testing directed to appropriate sandbox environments
-- **Credential Management**: Interactive setup with secure credential handling
-- **Rate Limiting**: Respects API rate limits and implements appropriate delays
-- **Data Privacy**: Test data and results stored locally, no external data transmission
-- **Browser Automation**: Uses Playwright with appropriate security settings
-
-## 📝 Sample Output
-
-After running the enhanced API scraper, you'll see:
-
-```
-🚀 ENHANCED API SCRAPER
-========================
-
-✨ Mode Selection:
-   1. Single Endpoint Testing - Test a specific API endpoint
-   2. Full-Site Crawling - Navigate and test discovered endpoints
-   
-🎯 Selected Mode: Full-Site Crawling
-
-🔍 Navigation Discovery:
-   📂 Discovered 15 API endpoints from Global Payments developer portal
-   🌐 Processing batch requests with performance tracking
-   
-📊 Test Results Generated:
-   ✅ 12/15 endpoints tested successfully
-   ⏱️  Average response time: 245ms
-   📄 results/api-test-results-2024-01-15-14-30.json created
-   
-🎨 Enhanced Dashboard:
-   📊 results-dashboard-autoload.html generated
-   🚀 Opening interactive dashboard...
-```
-
-## 🤝 Contributing
-
-To extend or modify the enhanced system:
-
-1. **Add new testing modes**: Extend mode selection in `api-scraper.js`
-2. **Enhance navigation discovery**: Modify Playwright selectors for different sites
-3. **Improve dashboard features**: Add new interactive elements to `create-enhanced-dashboard.js`
-4. **Add new API integrations**: Configure additional API testing capabilities
-5. **Extend performance metrics**: Add new tracking and analysis features
-
-### Development Setup
-
-```bash
-# Install dependencies
 npm install
-
-# Run in development mode
-npm start
-
-# Generate dashboard for testing
-npm run dashboard
-
-# Clean development files
-npm run clean
 ```
 
-## 📄 Documentation
+2. Create `.env` file with your credentials:
+```
+GP_API_APP_ID=your_app_id
+GP_API_APP_KEY=your_app_key
+```
 
-For detailed information about specific components:
-- [Dashboard README](./DASHBOARD-README.md) - Comprehensive dashboard documentation
-- [Credentials Setup](./CREDENTIALS-SETUP.md) - API credential configuration guide
+## Usage
 
-## 📄 License
+1. Start the server:
+```bash
+node server.js
+```
 
-This enhanced API testing suite is provided as-is for development and testing purposes.
+2. Open the dashboard:
+```
+http://localhost:3000
+```
+
+3. Enter a Global Payments API documentation URL and click:
+   - **Extract Only** - Just scrape the documentation
+   - **Extract & Test** - Scrape and run live API tests
+
+## Example URLs
+
+- `https://developer.globalpayments.com/api/accounts#/Retrieve%20a%20List%20of%20Accounts/retrieveAListOfAccounts`
+- `https://developer.globalpayments.com/api/links#/Create%20a%20link/post-links`
+
+## Architecture
+
+### Backend (`server.js`)
+- Express server on port 3000
+- Playwright-based web scraper (Firefox headless)
+- OAuth 2.0 token generation with SHA512 secrets
+- Live API testing with scenario coverage
+
+### Frontend (`frontend.html`)
+- Interactive dashboard with tabbed interface
+- Syntax highlighting for code snippets
+- Real-time extraction status
+- Historical results browser
+
+### Extraction Process
+1. Navigate to documentation page
+2. Detect available languages (JSON, cURL)
+3. For each language:
+   - Switch language if needed (2s wait for UI update)
+   - JSON: Extract from 3 tabs (URL & QUERY, HEADERS, BODY)
+   - cURL: Extract single complete command
+4. Extract documented HTTP status codes
+5. Parse endpoint metadata (method, URL, headers)
+
+## API Endpoints
+
+- `POST /api/extract` - Extract and optionally test an API endpoint
+  ```json
+  {
+    "url": "https://developer.globalpayments.com/api/...",
+    "runLiveTest": true
+  }
+  ```
+
+- `GET /api/health` - Health check
+- `GET /api/list-results` - List saved extraction results  
+- `GET /api/load-result/:filename` - Load a specific result file
+
+## Output Files
+
+- `extraction-results-{timestamp}.json` - Complete extraction and test data
+- `gp-access-token.json` - Current OAuth token (auto-generated)
+
+## Configuration Files
+
+- `.env` - API credentials (gitignored)
+- `config/credentials.json` - Alternative credentials storage (gitignored)
+- `playwright.config.js` - Playwright browser settings
+
+## Dependencies
+
+- `express` - Web server framework
+- `playwright` - Browser automation for scraping
+- Node.js 18+ (native fetch support)
+
+## Technical Details
+
+### Language Detection
+- Finds dropdown with class `request-switcher`
+- Extracts available languages from dropdown menu items
+- Case-insensitive matching (handles "cURL" vs "curl")
+
+### Tab Structure
+- JSON uses container `.api-explorer__try-it__json` with sub-tabs
+- cURL uses container `.api-explorer__try-it__curl` with single code block
+- Waits 2 seconds after language switch for DOM update
+
+### Token Generation
+- Uses OAuth 2.0 client credentials flow
+- Secret = SHA512(nonce + appKey)
+- Tokens valid for ~24 hours
+- Auto-refreshes on each test run
+
+## Troubleshooting
+
+**"No code content found"**
+- Increase wait times in language switching (line ~448)
+- Check if page structure has changed
+
+**Token generation fails**
+- Verify `.env` credentials are correct
+- Check network connection to sandbox environment
+
+**Page load timeout**
+- Page uses multiple fallback strategies
+- Partial extraction attempted on timeout
+
+## License
+
+MIT
