@@ -2,6 +2,8 @@
 
 Automated tool to extract and test API endpoints from Global Payments developer documentation.
 
+<img width="1232" height="848" alt="image" src="https://github.com/user-attachments/assets/e1785776-3535-41d6-a095-08149e6c04fd" />
+
 ## Features
 
 - **Automated Extraction**: Scrapes API documentation using Playwright
