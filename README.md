@@ -68,9 +68,13 @@ node server.js
 http://localhost:3000
 ```
 
-3. Enter a Global Payments API documentation URL and click:
-   - **Extract Only** - Just scrape the documentation
-   - **Extract & Test** - Scrape and run live API tests
+3. Enter a Global Payments API documentation URL and choose your options:
+   
+    &#10003; Run live API test after extraction
+
+    &#10003; Save extraction results to file
+   
+   - **Extract** - Run with the above options
 
 ## Example URLs
 
