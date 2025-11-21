@@ -137,8 +137,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 - `.env` - API credentials (gitignored)
 - `config/credentials.json` - Alternative credentials storage (gitignored)
-- `playwright.config.js` - Playwright browser settings
-
+  
 ## Dependencies
 
 - `express` - Web server framework
