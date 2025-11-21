@@ -1,4 +1,4 @@
-# Global Payments API Scraper
+# Global Payments API Validator
 
 Automated tool to extract and test API endpoints from Global Payments developer documentation.
 
