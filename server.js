@@ -967,7 +967,6 @@ function hasResponseSignature(obj) {
 }
 
 async function testAllSnippets(extractedData) {
-    const availableLanguages = extractedData.availableLanguages || [];
     const documentedStatusCodes = extractedData.documentedStatusCodes || [];
     
     // Attempt to generate fresh token, but don't fail if we can't
@@ -978,107 +977,191 @@ async function testAllSnippets(extractedData) {
         console.log('   Using existing token if available...');
     }
     
-    console.log(`\n🧪 Testing ${availableLanguages.length} language snippets against API...`);
-    console.log(`📋 Documented status codes to test: ${documentedStatusCodes.join(', ')}`);
+    // Parse code snippets and group by example
+    const exampleRequests = parseSnippetsByExample(extractedData.codeSnippets);
+    
+    // If no examples found, create a default example using the base extracted data
+    if (Object.keys(exampleRequests).length === 0) {
+        console.log(`   ℹ️  No named examples found, creating default example from extracted data`);
+        exampleRequests['default'] = {
+            url: extractedData.url,
+            headers: extractedData.headers || {},
+            body: extractedData.body
+        };
+    }
+    
+    console.log(`\n🧪 Testing ${Object.keys(exampleRequests).length} example(s) against API...`);
+    console.log(`📋 Documented status codes: ${documentedStatusCodes.join(', ')}`);
     
     const results = {
         documentedStatusCodes: documentedStatusCodes,
-        availableLanguages: availableLanguages,
-        languageTests: {},
-        statusCodeTests: {}
+        exampleTests: {}
     };
     
-    // Test each language snippet (normal valid request)
-    for (const language of availableLanguages) {
-        console.log(`\n📝 Testing ${language.toUpperCase()} snippet...`);
+    // Test each example individually - including all status code scenarios
+    for (const [exampleName, exampleData] of Object.entries(exampleRequests)) {
+        console.log(`\n📂 Testing example: "${exampleName}"...`);
         
-        const testResult = await testSingleSnippet(extractedData, language);
-        results.languageTests[language] = testResult;
+        // Build base request data for this example
+        const baseRequestData = {
+            method: extractedData.method || 'POST',
+            url: exampleData.url || extractedData.url,
+            headers: exampleData.headers || {},
+            body: exampleData.body,
+            documentedStatusCodes: documentedStatusCodes
+        };
+        
+        console.log(`   🔗 URL: ${baseRequestData.url}`);
+        console.log(`   📦 Body fields: ${baseRequestData.body ? Object.keys(baseRequestData.body).join(', ') : 'none'}`);
+        
+        // Test normal request (200) plus all documented status codes for this example
+        const exampleTestResults = {
+            exampleName: exampleName,
+            url: baseRequestData.url,
+            method: baseRequestData.method,
+            statusCodeTests: {}
+        };
+        
+        // Run status code tests for this specific example
+        console.log(`\n   🎯 Testing status code scenarios for "${exampleName}"...`);
+        exampleTestResults.statusCodeTests = await testStatusCodesForExample(baseRequestData, documentedStatusCodes);
+        
+        results.exampleTests[exampleName] = exampleTestResults;
     }
-    
-    // Test different scenarios to trigger each documented status code
-    console.log(`\n🎯 Testing scenarios to trigger documented status codes...`);
-    results.statusCodeTests = await testAllStatusCodes(extractedData, documentedStatusCodes);
     
     return results;
 }
 
-async function testSingleSnippet(extractedData, language) {
-    // For now, all languages test the same underlying API endpoint
-    // In the future, this could execute language-specific code
+function parseSnippetsByExample(codeSnippets) {
+    const examples = {};
     
-    const result = await testLiveAPI(extractedData);
+    // Group snippets by example name
+    for (const [key, code] of Object.entries(codeSnippets)) {
+        if (key === '_labels') continue;
+        
+        const parts = key.split('_');
+        const lang = parts[0];
+        
+        // Extract example name using same logic as frontend
+        // Key format: json_url___query_create_a_paylink, json_headers_create_a_paylink, curl_create_a_paylink
+        let exampleName = 'default';
+        
+        if (lang === 'json') {
+            // For JSON, we need to skip the tab name part
+            // Tab names: url___query, headers, body
+            if (key.includes('_url___query_')) {
+                // Split on _url___query_ and take everything after
+                exampleName = key.split('_url___query_')[1];
+            } else if (key.includes('_headers_')) {
+                // Split on _headers_ and take everything after
+                exampleName = key.split('_headers_')[1];
+            } else if (key.includes('_body_')) {
+                // Split on _body_ and take everything after
+                exampleName = key.split('_body_')[1];
+            }
+        } else {
+            // For other languages (curl, etc), everything after language is the example name
+            exampleName = parts.slice(1).join('_');
+        }
+        
+        // Skip if we couldn't extract a valid example name
+        if (!exampleName || exampleName === 'default') {
+            console.log(`      ⚠️ Could not extract example name from key: ${key}`);
+            continue;
+        }
+        
+        if (!examples[exampleName]) {
+            examples[exampleName] = {
+                url: null,
+                headers: null,
+                body: null
+            };
+        }
+        
+        // Parse JSON snippets to extract data
+        if (lang === 'json') {
+            try {
+                if (key.includes('url___query')) {
+                    // Extract URL from URL & QUERY tab
+                    const urlMatch = code.match(/https?:\/\/[^\s"'\n]+/);
+                    if (urlMatch) {
+                        examples[exampleName].url = urlMatch[0];
+                    }
+                } else if (key.includes('headers')) {
+                    // Parse headers JSON
+                    const parsed = JSON.parse(code);
+                    examples[exampleName].headers = parsed;
+                } else if (key.includes('body')) {
+                    // Parse body JSON
+                    const parsed = JSON.parse(code);
+                    examples[exampleName].body = parsed;
+                }
+            } catch (parseError) {
+                console.log(`      ⚠️ Could not parse ${key}: ${parseError.message}`);
+            }
+        }
+    }
     
-    return {
-        language: language,
-        statusCode: result.statusCode,
-        statusText: result.statusText,
-        responseTime: result.responseTime,
-        success: result.success,
-        matchesDocumentation: extractedData.documentedStatusCodes?.includes(String(result.statusCode)),
-        error: result.error || null
-    };
+    console.log(`   📊 Parsed ${Object.keys(examples).length} example(s): ${Object.keys(examples).join(', ')}`);
+    
+    return examples;
 }
 
-async function testAllStatusCodes(extractedData, documentedCodes) {
+async function testStatusCodesForExample(baseRequestData, documentedCodes) {
     const testResults = {};
     
-    console.log(`\n🔍 Testing against actual scraped code snippets...`);
-    
     for (const code of documentedCodes) {
-        console.log(`\n🔬 Testing scenario for ${code}...`);
+        console.log(`      🔬 Testing scenario for ${code}...`);
         
         try {
             let result;
+            let requestData = { ...baseRequestData };
             
             switch (code) {
                 case '200':
                     // Test 1: Valid request with proper auth
-                    console.log(`   Scenario: Valid request with proper authentication`);
-                    result = await testLiveAPI(extractedData);
+                    console.log(`         Scenario: Valid request with proper authentication`);
+                    result = await testLiveAPI(requestData);
                     break;
                     
                 case '400':
                     // Test 2: Invalid parameters (bad data in request)
-                    console.log(`   Scenario: Request with invalid parameters`);
-                    const badParamData = JSON.parse(JSON.stringify(extractedData));
-                    badParamData.url = badParamData.url + '?page_size=invalid&from_time_created=not_a_date';
-                    result = await testLiveAPI(badParamData);
+                    console.log(`         Scenario: Request with invalid parameters`);
+                    requestData = { ...baseRequestData };
+                    requestData.url = requestData.url + '?page_size=invalid&from_time_created=not_a_date';
+                    result = await testLiveAPI(requestData);
                     break;
                     
                 case '401':
                     // Test 3: No auth or invalid token
-                    console.log(`   Scenario: Request with invalid/missing authentication`);
-                    const noAuthData = JSON.parse(JSON.stringify(extractedData));
-                    noAuthData.useInvalidToken = true;
-                    result = await testLiveAPI(noAuthData);
+                    console.log(`         Scenario: Request with invalid/missing authentication`);
+                    requestData = { ...baseRequestData };
+                    requestData.useInvalidToken = true;
+                    result = await testLiveAPI(requestData);
                     break;
                     
                 case '403':
                     // Test 4: Insufficient permissions
-                    // Try accessing a different merchant's accounts (would need different credentials)
-                    console.log(`   Scenario: Request to restricted resource`);
-                    const forbiddenData = JSON.parse(JSON.stringify(extractedData));
-                    // Try accessing with restricted merchant ID that current token doesn't have access to
-                    forbiddenData.url = 'https://apis.sandbox.globalpay.com/ucp/merchants/MER_RESTRICTED_ACCESS_DENIED/accounts';
-                    result = await testLiveAPI(forbiddenData);
+                    console.log(`         Scenario: Request to restricted resource`);
+                    requestData = { ...baseRequestData };
+                    requestData.url = 'https://apis.sandbox.globalpay.com/ucp/merchants/MER_RESTRICTED_ACCESS_DENIED/accounts';
+                    result = await testLiveAPI(requestData);
                     break;
                     
                 case '404':
                     // Test 5: Non-existent endpoint
-                    console.log(`   Scenario: Request to non-existent endpoint`);
-                    const notFoundData = JSON.parse(JSON.stringify(extractedData));
-                    notFoundData.url = notFoundData.url.replace(/\/[^\/]*$/, '/endpoint-does-not-exist-xyz');
-                    result = await testLiveAPI(notFoundData);
+                    console.log(`         Scenario: Request to non-existent endpoint`);
+                    requestData = { ...baseRequestData };
+                    requestData.url = requestData.url.replace(/\/[^\/]*$/, '/endpoint-does-not-exist-xyz');
+                    result = await testLiveAPI(requestData);
                     break;
                     
                 case '500':
                 case '501':
                 case '502':
                     // Test server errors by making a valid request
-                    // These may occur due to server issues, we test to see current state
-                    console.log(`   Scenario: ${getScenarioName(code)}`);
-                    result = await testLiveAPI(extractedData);
+                    console.log(`         Scenario: ${getScenarioName(code)}`);
+                    result = await testLiveAPI(requestData);
                     break;
                     
                 default:
@@ -1099,13 +1182,13 @@ async function testAllStatusCodes(extractedData, documentedCodes) {
             };
             
             if (String(result.statusCode) === String(code)) {
-                console.log(`   ✅ Successfully triggered ${code}`);
+                console.log(`         ✅ Successfully triggered ${code}`);
             } else {
-                console.log(`   ⚠️  Got ${result.statusCode} instead of ${code}`);
+                console.log(`         ⚠️  Got ${result.statusCode} instead of ${code}`);
             }
             
         } catch (error) {
-            console.log(`   ❌ Error testing ${code}: ${error.message}`);
+            console.log(`         ❌ Error testing ${code}: ${error.message}`);
             testResults[code] = {
                 scenario: getScenarioName(code),
                 expectedCode: code,
@@ -1135,7 +1218,7 @@ function getScenarioName(code) {
     return scenarios[code] || `HTTP ${code}`;
 }
 
-async function testLiveAPI(extractedData) {
+async function testLiveAPI(requestData) {
     try {
         // Load credentials
         const envPath = path.join(process.cwd(), '.env');
@@ -1155,35 +1238,93 @@ async function testLiveAPI(extractedData) {
         const tokenFile = path.join(process.cwd(), 'gp-access-token.json');
         const tokenData = JSON.parse(await fs.readFile(tokenFile, 'utf8'));
         
+        // Check if this is the access token endpoint (special case - doesn't use Bearer auth)
+        const isAccessTokenEndpoint = requestData.url?.includes('/accesstoken');
+        
         // Use invalid token if requested (to test 401)
-        const token = extractedData.useInvalidToken ? 'INVALID_TOKEN_12345' : tokenData.token;
+        const token = requestData.useInvalidToken ? 'INVALID_TOKEN_12345' : tokenData.token;
+        
+        // Build headers - merge example headers with required auth headers
+        // Filter out 'authorization' from example headers to prevent placeholder tokens from overriding real token
+        const exampleHeaders = requestData.headers || {};
+        const filteredExampleHeaders = Object.keys(exampleHeaders).reduce((acc, key) => {
+            if (key.toLowerCase() !== 'authorization') {
+                acc[key] = exampleHeaders[key];
+            }
+            return acc;
+        }, {});
         
         const headers = {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
-            'Authorization': `Bearer ${token}`,
-            'X-GP-Version': '2021-03-22'
+            'X-GP-Version': '2021-03-22',
+            ...filteredExampleHeaders
         };
+        
+        // Only add Bearer token auth if NOT the access token endpoint
+        if (!isAccessTokenEndpoint) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
         
         if (envVars.GP_API_APP_ID) {
             headers['X-GP-Api-Key'] = envVars.GP_API_APP_ID;
         }
         
-        let requestBody = extractedData.body;
-        if (extractedData.method === 'POST' && requestBody) {
-            // Add required fields
-            requestBody = {
-                ...requestBody,
-                account_id: tokenData.scope?.accounts?.[0]?.id,
-                account_name: tokenData.scope?.accounts?.[0]?.name
-            };
+        let requestBody = requestData.body;
+        if (requestData.method === 'POST' && requestBody) {
+            // Special handling for access token endpoint - use real app credentials
+            if (isAccessTokenEndpoint) {
+                const nonce = Date.now().toString() + Math.random().toString(36).substring(2);
+                const secret = crypto.createHash('sha512').update(nonce + envVars.GP_API_APP_KEY).digest('hex');
+                
+                requestBody = {
+                    app_id: envVars.GP_API_APP_ID,
+                    nonce: nonce,
+                    secret: secret,
+                    grant_type: 'client_credentials'
+                };
+                
+                // Preserve any additional fields from the example (like permissions, seconds_to_expire)
+                const exampleBody = requestData.body || {};
+                if (exampleBody.permissions) {
+                    requestBody.permissions = exampleBody.permissions;
+                }
+                if (exampleBody.seconds_to_expire) {
+                    requestBody.seconds_to_expire = exampleBody.seconds_to_expire;
+                }
+            } else {
+                // Normal endpoint handling - replace placeholder values with real ones
+                // Replace placeholder merchant_id with real merchant_id from token
+                if (requestBody.merchant_id && tokenData.scope?.merchant_id) {
+                    requestBody = {
+                        ...requestBody,
+                        merchant_id: tokenData.scope.merchant_id
+                    };
+                }
+                
+                // Add or replace account_id with real account_id from token
+                if (tokenData.scope?.accounts?.[0]?.id) {
+                    requestBody = {
+                        ...requestBody,
+                        account_id: tokenData.scope.accounts[0].id
+                    };
+                }
+                
+                // Add or replace account_name with real account_name from token
+                if (tokenData.scope?.accounts?.[0]?.name) {
+                    requestBody = {
+                        ...requestBody,
+                        account_name: tokenData.scope.accounts[0].name
+                    };
+                }
+            }
         }
         
-        console.log(`📡 Making ${extractedData.method} request to ${extractedData.url}`);
+        console.log(`📡 Making ${requestData.method} request to ${requestData.url}`);
         
         const startTime = Date.now();
-        const response = await fetch(extractedData.url, {
-            method: extractedData.method,
+        const response = await fetch(requestData.url, {
+            method: requestData.method,
             headers: headers,
             body: requestBody ? JSON.stringify(requestBody) : undefined
         });
@@ -1222,7 +1363,7 @@ async function testLiveAPI(extractedData) {
         };
         
         // Check if the status code we received is one that's documented
-        const documentedCodes = extractedData.documentedStatusCodes || [];
+        const documentedCodes = requestData.documentedStatusCodes || [];
         const receivedCodeMatch = documentedCodes.includes(String(response.status));
         
         return {
@@ -1231,8 +1372,8 @@ async function testLiveAPI(extractedData) {
             responseTime: endTime - startTime,
             responseHeaders: Object.fromEntries(response.headers.entries()),
             requestHeaders: headers,
-            method: extractedData.method,
-            url: extractedData.url,
+            method: requestData.method,
+            url: requestData.url,
             body: responseBody,
             success: isAPISuccess,
             authenticated: !!tokenData.token,

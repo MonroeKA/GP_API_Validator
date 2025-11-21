@@ -369,12 +369,8 @@
                     </label>
                 </div>
 
-                <button type="submit" class="btn btn-primary">
+                <button type="submit" class="btn btn-primary" id="extractBtn">
                     🔍 Extract
-                </button>
-                
-                <button type="button" class="btn btn-secondary" onclick="clearAll()">
-                    🗑️ Clear All
                 </button>
             </form>
 
@@ -452,11 +448,18 @@
             const url = document.getElementById('apiUrl').value;
             const runLiveTest = document.getElementById('runLiveTest').checked;
             const saveResults = document.getElementById('saveResults').checked;
+            const extractBtn = document.getElementById('extractBtn');
             
             if (!url) {
                 showStatus('Please enter a valid URL', 'error');
                 return;
             }
+            
+            // Disable button and show loading state
+            extractBtn.disabled = true;
+            extractBtn.style.opacity = '0.6';
+            extractBtn.style.cursor = 'not-allowed';
+            extractBtn.innerHTML = '⏳ Extracting...';
             
             showStatus('🔄 Processing URL and extracting data...', 'loading');
             
@@ -514,6 +517,12 @@
                 showMockData();
                 showStatus('✅ Demo data loaded (backend not connected)', 'success');
                 switchTab('extracted');
+            } finally {
+                // Re-enable button
+                extractBtn.disabled = false;
+                extractBtn.style.opacity = '1';
+                extractBtn.style.cursor = 'pointer';
+                extractBtn.innerHTML = '🔍 Extract';
             }
         }
 
@@ -765,10 +774,12 @@
                             // - json_url___query_create_a_paylink -> "create_a_paylink"
                             // - json_headers_create_a_paylink -> "create_a_paylink"  
                             // - curl_create_a_paylink -> "create_a_paylink"
+                            // - json_url___query -> "" (no example name, use default)
+                            // - json_headers -> "" (no example name, use default)
                             
                             // Strategy: Find the last occurrence of a known tab name and take everything after it
                             const tabNames = ['url___query', 'headers', 'body'];
-                            let exampleName = 'default';
+                            let exampleName = '';
                             
                             // Try to find tab name in the key string
                             let foundTabName = null;
@@ -785,16 +796,16 @@
                             if (foundTabName) {
                                 // Extract everything after the tab name
                                 const afterTab = key.substring(tabPosition + foundTabName.length + 2); // +2 for the underscores
-                                if (afterTab) {
-                                    exampleName = afterTab;
-                                }
+                                exampleName = afterTab || '';
                             } else {
-                                // No tab name found (likely curl), skip just the language
-                                exampleName = parts.slice(1).join('_');
+                                // No tab name found (likely curl or simple key), skip just the language
+                                const remainder = parts.slice(1).join('_');
+                                // Only use remainder if it's not a tab name itself
+                                exampleName = tabNames.includes(remainder) ? '' : remainder;
                             }
                             
                             // Convert snake_case to Title Case matching documentation portal
-                            const displayName = exampleName === 'default' ? 'Default Example' : 
+                            const displayName = !exampleName || exampleName === 'default' ? 'Code Snippets' : 
                                 exampleName.split('_')
                                     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
                                     .join(' ');
@@ -867,23 +878,19 @@
             const container = document.getElementById('resultsContent');
             
             console.log('displayTestResults called with:', results);
-            console.log('Has languageTests?', results?.languageTests);
+            console.log('Has exampleTests?', results?.exampleTests);
             
-            if (!results || !results.languageTests) {
+            if (!results || !results.exampleTests) {
                 container.innerHTML = '<p style="color: #6c757d; text-align: center; margin-top: 50px;">No test results available.</p>';
                 return;
             }
             
-            const languageTests = Object.entries(results.languageTests || {});
+            const exampleTests = Object.entries(results.exampleTests || {});
             const documentedCodes = results.documentedStatusCodes || [];
             
             const html = `
                 <div class="data-card">
                     <h3>📚 Portal Documentation</h3>
-                    <div class="data-item">
-                        <span class="data-label">Available Languages:</span>
-                        <span class="data-value">${(results.availableLanguages || []).join(', ').toUpperCase() || 'None detected'}</span>
-                    </div>
                     <div class="data-item">
                         <span class="data-label">Documented Status Codes:</span>
                         <span class="data-value">
@@ -899,124 +906,95 @@
                 </div>
 
                 <div class="data-card">
-                    <h3>🧪 Language Snippet Test Results (${languageTests.length} tested)</h3>
-                    ${languageTests.length > 0 ? languageTests.map(([lang, test]) => {
-                        const languageIcon = {
-                            'json': '📄',
-                            'curl': '🌐',
-                            'javascript': '🟨',
-                            'python': '🐍',
-                            'php': '🐘',
-                            'java': '☕',
-                            'c#': '🔷',
-                            'ruby': '💎',
-                            'go': '🐹',
-                            'node': '🟢'
-                        };
-                        
-                        const icon = languageIcon[lang.toLowerCase()] || '📝';
-                        const badgeClass = test.success ? 'badge-success' : 'badge-error';
-                        const matchBadge = test.matchesDocumentation ? 
-                            '<span class="badge badge-success" style="margin-left: 10px;">✓ Matches Docs</span>' : 
-                            '<span class="badge badge-warning" style="margin-left: 10px;">⚠️ Undocumented Code</span>';
-                        
-                        return `
-                        <div style="margin: 20px 0; padding: 15px; border: 1px solid #dee2e6; border-radius: 8px; background: #f8f9fa;">
-                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
-                                <h4 style="margin: 0; display: flex; align-items: center; gap: 8px;">
-                                    <span>${icon}</span>
-                                    <span>${lang.toUpperCase()}</span>
-                                </h4>
-                                <div>
-                                    <span class="badge ${badgeClass}" style="font-size: 1.1em; padding: 8px 12px;">${test.statusCode || 'ERROR'}</span>
-                                    ${matchBadge}
-                                </div>
-                            </div>
-                            <div class="data-item" style="margin: 5px 0;">
-                                <span class="data-label">Status:</span>
-                                <span class="data-value">${test.statusCode} ${test.statusText || ''}</span>
-                            </div>
-                            <div class="data-item" style="margin: 5px 0;">
-                                <span class="data-label">Response Time:</span>
-                                <span class="data-value">${test.responseTime || 0}ms</span>
-                            </div>
-                            ${test.error ? `
-                            <div class="data-item" style="margin: 5px 0;">
-                                <span class="data-label">Error:</span>
-                                <span class="data-value" style="color: #dc3545;">${test.error}</span>
-                            </div>
-                            ` : ''}
-                        </div>
-                        `;
-                    }).join('') : '<p style="color: #6c757d; font-style: italic;">No language tests executed</p>'}
-                </div>
-
-                ${results.statusCodeTests && Object.keys(results.statusCodeTests).length > 0 ? `
-                <div class="data-card">
-                    <h3>🎯 Status Code Validation Tests</h3>
-                    <p style="color: #6c757d; margin-bottom: 15px; font-size: 0.95em;">
-                        Testing scenarios to trigger each documented status code
-                    </p>
+                    <h3>🧪 Example Test Results (${exampleTests.length} tested)</h3>
                     
-                    ${Object.entries(results.statusCodeTests).map(([code, test]) => {
-                        const matched = test.matched;
-                        const skipped = test.skipped;
-                        const badgeClass = code === '200' ? 'badge-success' : 
-                                          code === '403' ? 'badge-error' :
-                                          code.startsWith('4') ? 'badge-warning' : 
-                                          code.startsWith('5') ? 'badge-error' : 'badge-secondary';
+                    ${exampleTests.length > 0 ? exampleTests.map(([exampleName, test]) => {
+                        // Convert snake_case to Title Case for display
+                        const displayName = exampleName.split('_')
+                            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                            .join(' ');
+                        
+                        const statusCodeTests = Object.entries(test.statusCodeTests || {});
+                        const hasTests = statusCodeTests.length > 0;
                         
                         return `
-                        <div style="margin: 20px 0; padding: 15px; border: 1px solid #dee2e6; border-radius: 8px; background: ${skipped ? '#f5f5f5' : matched ? '#f0f9ff' : '#fff8f0'};">
-                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
-                                <h4 style="margin: 0; display: flex; align-items: center; gap: 8px;">
-                                    <span>${skipped ? '⏭️' : matched ? '✅' : '⚠️'}</span>
-                                    <span>HTTP ${code}</span>
+                        <div style="margin: 20px 0; border: 2px solid #e9ecef; border-radius: 8px; overflow: hidden;">
+                            <div 
+                                onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'; this.querySelector('.collapse-icon').textContent = this.nextElementSibling.style.display === 'none' ? '▶' : '▼';"
+                                style="cursor: pointer; background: linear-gradient(to right, #f8f9fa, #ffffff); padding: 15px 20px; display: flex; align-items: center; justify-content: space-between; user-select: none; border-bottom: 1px solid #e9ecef;"
+                            >
+                                <h4 style="color: #495057; margin: 0; font-size: 1.2em; display: flex; align-items: center; gap: 10px;">
+                                    <span>📂</span>
+                                    ${displayName}
                                 </h4>
-                                <div>
-                                    <span class="badge ${badgeClass}" style="font-size: 1.1em; padding: 8px 12px;">
-                                        ${test.actualCode || 'N/A'}
-                                    </span>
-                                    ${skipped ? 
-                                        '<span class="badge badge-secondary" style="margin-left: 10px;">Skipped</span>' :
-                                        matched ? 
-                                            '<span class="badge badge-success" style="margin-left: 10px;">✓ Matched</span>' : 
-                                            '<span class="badge badge-warning" style="margin-left: 10px;">Different Code</span>'
-                                    }
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="color: #6c757d; font-size: 0.9em;">${statusCodeTests.length} tests</span>
+                                    <span class="collapse-icon" style="font-size: 1.2em; color: #6c757d;">▼</span>
                                 </div>
                             </div>
-                            <div class="data-item" style="margin: 5px 0;">
-                                <span class="data-label">Test Scenario:</span>
-                                <span class="data-value">${test.scenario}</span>
+                            
+                            <div style="padding: 20px; background: #ffffff;">
+                                ${test.url ? `
+                                <div class="data-item" style="margin-bottom: 15px;">
+                                    <span class="data-label">Endpoint:</span>
+                                    <span class="data-value" style="word-break: break-all; font-family: monospace; font-size: 0.9em;">${test.url}</span>
+                                </div>
+                                ` : ''}
+                                
+                                <h5 style="color: #495057; margin: 15px 0 10px 0; font-size: 1.1em;">Status Code Tests</h5>
+                                
+                                ${hasTests ? statusCodeTests.map(([code, testResult]) => {
+                                    const matched = testResult.matched;
+                                    const badgeClass = code === '200' ? 'badge-success' : 
+                                                      code === '403' ? 'badge-error' :
+                                                      code.startsWith('4') ? 'badge-warning' : 
+                                                      code.startsWith('5') ? 'badge-error' : 'badge-secondary';
+                                    
+                                    return `
+                                    <div style="margin: 15px 0; padding: 15px; border: 1px solid #dee2e6; border-radius: 8px; background: ${matched ? '#f0f9ff' : '#fff8f0'};">
+                                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                                            <h5 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                                                <span>${matched ? '✅' : '⚠️'}</span>
+                                                <span>HTTP ${code}</span>
+                                            </h5>
+                                            <div>
+                                                <span class="badge ${badgeClass}" style="font-size: 1em; padding: 6px 10px;">
+                                                    ${testResult.actualCode || 'N/A'}
+                                                </span>
+                                                ${matched ? 
+                                                    '<span class="badge badge-success" style="margin-left: 10px;">✓ Matched</span>' : 
+                                                    '<span class="badge badge-warning" style="margin-left: 10px;">Different Code</span>'
+                                                }
+                                            </div>
+                                        </div>
+                                        <div class="data-item" style="margin: 5px 0;">
+                                            <span class="data-label">Test Scenario:</span>
+                                            <span class="data-value">${testResult.scenario}</span>
+                                        </div>
+                                        <div class="data-item" style="margin: 5px 0;">
+                                            <span class="data-label">Expected:</span>
+                                            <span class="data-value">${testResult.expectedCode} - ${getExpectedStatusText(testResult.expectedCode)}</span>
+                                        </div>
+                                        <div class="data-item" style="margin: 5px 0;">
+                                            <span class="data-label">Actual Result:</span>
+                                            <span class="data-value">${testResult.actualCode} ${testResult.statusText || ''} (${testResult.responseTime}ms)</span>
+                                        </div>
+                                        ${testResult.responseBody && typeof testResult.responseBody === 'object' ? `
+                                        <div class="data-item" style="margin: 5px 0;">
+                                            <span class="data-label">Response:</span>
+                                            <span class="data-value" style="font-family: monospace; font-size: 0.85em;">
+                                                ${escapeHtml(testResult.responseBody.error_code || testResult.responseBody.message || JSON.stringify(testResult.responseBody).substring(0, 100))}
+                                            </span>
+                                        </div>
+                                        ` : ''}
+                                    </div>
+                                    `;
+                                }).join('') : '<p style="color: #6c757d; font-style: italic;">No tests executed for this example</p>'}
                             </div>
-                            ${skipped ? `
-                            <div class="data-item" style="margin: 5px 0;">
-                                <span class="data-label">Reason:</span>
-                                <span class="data-value" style="color: #6c757d; font-style: italic;">${test.reason}</span>
-                            </div>
-                            ` : `
-                            <div class="data-item" style="margin: 5px 0;">
-                                <span class="data-label">Expected:</span>
-                                <span class="data-value">${test.expectedCode} - ${test.statusText || ''}</span>
-                            </div>
-                            <div class="data-item" style="margin: 5px 0;">
-                                <span class="data-label">Actual Result:</span>
-                                <span class="data-value">${test.actualCode} ${test.statusText || ''} (${test.responseTime}ms)</span>
-                            </div>
-                            ${test.responseBody && typeof test.responseBody === 'object' ? `
-                            <div class="data-item" style="margin: 5px 0;">
-                                <span class="data-label">Response:</span>
-                                <span class="data-value" style="font-family: monospace; font-size: 0.85em;">
-                                    ${test.responseBody.error_code || test.responseBody.message || JSON.stringify(test.responseBody).substring(0, 100)}
-                                </span>
-                            </div>
-                            ` : ''}
-                            `}
                         </div>
                         `;
-                    }).join('')}
+                    }).join('') : '<p style="color: #6c757d; font-style: italic;">No example tests executed</p>'}
                 </div>
-                ` : ''}
             `;
             
             container.innerHTML = html;
@@ -1036,23 +1014,27 @@
             }
         }
 
-        function clearAll() {
-            document.getElementById('apiUrl').value = '';
-            document.getElementById('runLiveTest').checked = true;
-            document.getElementById('processingStatus').innerHTML = '';
-            document.getElementById('extractedContent').innerHTML = '<p style="color: #6c757d; text-align: center; margin-top: 50px;">No data extracted yet. Please process a URL first.</p>';
-            document.getElementById('resultsContent').innerHTML = '<p style="color: #6c757d; text-align: center; margin-top: 50px;">No test results available. Please run an extraction with live testing enabled.</p>';
-            
-            currentData = null;
-            testResults = null;
-            
-            switchTab('input');
-        }
-
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        function getExpectedStatusText(code) {
+            const statusTexts = {
+                '200': 'Success',
+                '201': 'Created',
+                '204': 'No Content',
+                '400': 'Bad Request',
+                '401': 'Unauthorized',
+                '403': 'Forbidden',
+                '404': 'Not Found',
+                '500': 'Internal Server Error',
+                '501': 'Not Implemented',
+                '502': 'Bad Gateway',
+                '503': 'Service Unavailable'
+            };
+            return statusTexts[code] || '';
         }
 
         // Page loaded - no auto demo data

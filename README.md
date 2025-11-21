@@ -30,11 +30,23 @@ Automated tool to extract and test API endpoints from Global Payments developer 
 npm install
 ```
 
-2. Create `.env` file with your credentials:
+2. Install Playwright browsers:
+```bash
+npx playwright install firefox
 ```
-GP_API_APP_ID=your_app_id
-GP_API_APP_KEY=your_app_key
+
+3. Create `.env` file from the example:
+```bash
+cp .env.example .env
 ```
+
+4. Edit `.env` and add your Global Payments API credentials:
+```
+GP_API_APP_ID=your_app_id_here
+GP_API_APP_KEY=your_app_key_here
+```
+
+Get your credentials from the [Global Payments Developer Portal](https://developer.globalpayments.com/)
 
 ## Usage
 
@@ -98,6 +110,21 @@ http://localhost:3000
 ## Output Files
 
 - `extraction-results-{timestamp}.json` - Complete extraction and test data
+- `gp-access-token.json` - Generated OAuth 2.0 access token (auto-refreshed)
+
+## Security
+
+⚠️ **Important**: Never commit your `.env` file or any files containing API credentials. These files are excluded in `.gitignore`.
+
+See [SECURITY.md](SECURITY.md) for more information.
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
 - `gp-access-token.json` - Current OAuth token (auto-generated)
 
 ## Configuration Files

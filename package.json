@@ -1,21 +1,26 @@
 {
-  "name": "playwright_gp_val",
+  "name": "gp-api-documentation-validator",
   "version": "1.0.0",
   "type": "module",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "scrape": "node api-scraper.js",
-    "scrape:single": "echo '1' | node api-scraper.js",
-    "scrape:fullsite": "echo '2' | node api-scraper.js",
-    "update-dashboard": "node update-dashboard.js",
-    "create-dashboard": "node create-enhanced-dashboard.js",
-    "view-results": "open results-dashboard-autoload.html"
+    "dev": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
+  "keywords": [
+    "api",
+    "testing",
+    "validation",
+    "documentation",
+    "playwright",
+    "web-scraping",
+    "global-payments",
+    "qa-automation"
+  ],
   "author": "",
-  "license": "ISC",
-  "description": "Global Payments Developer Portal QA Automation",
+  "license": "MIT",
+  "description": "Automated tool to extract and validate API endpoint functionality from the Global Payments developer portal",
   "dependencies": {
     "axios": "^1.7.7",
     "cheerio": "^1.0.0",
