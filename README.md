@@ -27,22 +27,28 @@ Automated tool to extract and test API endpoints from Global Payments developer 
 
 ## Setup
 
-1. Install dependencies:
+1. Clone the repository:
+```bash
+git clone https://github.com/MonroeKA/GP_API_Validator.git
+cd GP_API_Validator
+```
+
+2. Install dependencies:
 ```bash
 npm install
 ```
 
-2. Install Playwright browsers:
+3. Install Playwright browsers:
 ```bash
 npx playwright install firefox
 ```
 
-3. Create `.env` file from the example:
+4. Create `.env` file from the example:
 ```bash
 cp .env.example .env
 ```
 
-4. Edit `.env` and add your Global Payments API credentials:
+5. Edit `.env` and add your Global Payments API credentials:
 ```
 GP_API_APP_ID=your_app_id_here
 GP_API_APP_KEY=your_app_key_here
