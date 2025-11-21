@@ -118,8 +118,6 @@ http://localhost:3000
 
 ⚠️ **Important**: Never commit your `.env` file or any files containing API credentials. These files are excluded in `.gitignore`.
 
-See [SECURITY.md](SECURITY.md) for more information.
-
 ## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
