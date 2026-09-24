@@ -1,0 +1,12 @@
+[
+  {
+    "name": "Retrieve a List of Accounts",
+    "url": "https://developer.globalpayments.com/api/accounts#/Retrieve%20a%20List%20of%20Accounts/retrieveAListOfAccounts",
+    "liveTest": true
+  },
+  {
+    "name": "Create a link",
+    "url": "https://developer.globalpayments.com/api/links#/Create%20a%20link/post-links",
+    "liveTest": true
+  }
+]

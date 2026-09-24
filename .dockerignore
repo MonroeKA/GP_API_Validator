@@ -1,0 +1,9 @@
+node_modules
+sdk-verifiers/php/vendor
+sdk-verifiers/java/target
+sdk-verifiers/java/classpath.txt
+results/
+extraction-results-*.json
+.git
+.env
+gp-access-token.json

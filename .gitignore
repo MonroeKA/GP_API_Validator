@@ -14,6 +14,9 @@ realistic-api-test-*.json
 extraction-results-*.json
 extraction-export-*.json
 
+# CI/CD pipeline reports (cli.js output) - published as build artifacts, not committed
+results/
+
 # Generated dashboard with real data (use template instead)
 results-dashboard-autoload.html
 

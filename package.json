@@ -3,9 +3,13 @@
   "version": "1.0.0",
   "type": "module",
   "main": "server.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
+    "validate": "node cli.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -28,11 +32,12 @@
     "fs-extra": "^11.2.0",
     "globalpayments-api": "^3.11.1",
     "jsdom": "^26.1.0",
-    "playwright": "^1.48.0",
+    "playwright": "1.54.1",
     "url": "^0.11.4"
   },
   "devDependencies": {
-    "@playwright/test": "^1.48.0",
+    "@playwright/test": "1.54.1",
     "@types/node": "^24.1.0"
   }
 }
+

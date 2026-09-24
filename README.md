@@ -93,12 +93,102 @@ http://localhost:3000
    
    - **Extract** - Run with the above options
 
+## CI/CD Pipeline Usage
+
+The dashboard above is for interactive, one-URL-at-a-time use. For automated pipelines,
+use `cli.js`, a headless batch entrypoint that validates a list of documentation URLs
+with no browser UI involved and reports results in machine-readable form.
+
+```bash
+# Validate every URL listed in endpoints.json (extraction + live sandbox test + SDK verification)
+node cli.js
+
+# Validate a single URL
+node cli.js --url "https://developer.globalpayments.com/api/accounts#/..."
+
+# Validate a custom list of URLs
+node cli.js --urls-file path/to/endpoints.json
+
+# Skip live sandbox API calls - just confirm the docs page can still be parsed
+node cli.js --extract-only
+
+# Control report locations
+node cli.js --out results/report.json --junit results/report.junit.xml
+```
+
+Run `node cli.js --help` for the full flag reference (timeouts, `--report-only`, `--quiet`, etc).
+
+**Exit codes** a pipeline can branch on:
+| Code | Meaning |
+|------|---------|
+| `0` | Every tracked endpoint passed |
+| `1` | The tool ran fine but found a documentation/API mismatch |
+| `2` | The tool itself failed (bad config, missing credentials, crash, timeout) |
+
+**Tracked endpoints** ([endpoints.json](endpoints.json)) is a checked-in list of developer-portal
+URLs to validate, so adding a new page to watch is a normal, reviewable PR:
+```json
+[
+  { "name": "Retrieve a List of Accounts", "url": "https://developer.globalpayments.com/api/accounts#/...", "liveTest": true }
+]
+```
+A plain array of URL strings also works; `liveTest` defaults to `true` and can be set to `false`
+per-entry to only ever run extraction (no sandbox API calls) for that page.
+
+**Reports**: every run writes a JSON report and a JUnit XML report (consumable by most CI
+test-reporting integrations) to `results/` by default. These are gitignored - treat them as
+build artifacts, not committed files.
+
+**Credentials**: `cli.js` reads `GP_API_APP_ID`/`GP_API_APP_KEY`/`GP_API_ENVIRONMENT` from real
+process environment variables first (e.g. CI secrets), falling back to a local `.env` file only
+if those aren't already set - so no credentials file needs to be written to disk in a pipeline
+workspace.
+
+### Docker
+
+[Dockerfile](Dockerfile) builds a self-contained image (based on Microsoft's official Playwright
+image, with the Java/Maven and PHP/Composer toolchains needed by `sdk-verifiers/` layered on top)
+so a pipeline doesn't need to install browsers or multiple language runtimes on every run:
+
+```bash
+docker build -t gp-api-validator:ci .
+docker run --rm \
+  -e GP_API_APP_ID -e GP_API_APP_KEY -e GP_API_ENVIRONMENT=sandbox \
+  -v "$(pwd)/results:/app/results" \
+  gp-api-validator:ci --out /app/results/report.json --junit /app/results/report.junit.xml
+```
+
+### GitHub Actions
+
+[.github/workflows/gp-api-validation.yml](.github/workflows/gp-api-validation.yml) builds and runs
+the Docker image above:
+- **Nightly (`schedule`)**: full validation (extraction + live sandbox test + SDK verification) of
+  every URL in `endpoints.json`, so developer-portal drift is caught even when nothing in this
+  repo changed. Opens a GitHub issue automatically if it fails.
+- **`push` to `endpoints.json`**: validates newly-tracked URLs immediately.
+- **`pull_request`** touching the extraction/testing engine (`lib/pipeline.js`, `cli.js`,
+  `server.js`, `Dockerfile`): a fast `--extract-only` smoke test that needs no sandbox credentials,
+  so it also runs on PRs from forks.
+- **`workflow_dispatch`**: on-demand run, optionally against a single URL.
+
+Set the following as [repository secrets](../../settings/secrets/actions) for the scheduled/push/
+dispatch runs to be able to reach the sandbox API:
+- `GP_API_APP_ID`
+- `GP_API_APP_KEY`
+
 ## Example URLs
 
 - `https://developer.globalpayments.com/api/accounts#/Retrieve%20a%20List%20of%20Accounts/retrieveAListOfAccounts`
 - `https://developer.globalpayments.com/api/links#/Create%20a%20link/post-links`
 
+
 ## Architecture
+
+### Shared engine (`lib/pipeline.js`)
+- Extraction (`extractFromUrl`), live API testing (`testAllSnippets`), and SDK verification
+  (`verifyAllGlobalPaymentsSdks`) live here, independent of any HTTP server or CLI framing
+- Imported by both `server.js` (interactive dashboard) and `cli.js` (headless pipeline entrypoint)
+  so the two never drift apart
 
 ### Backend (`server.js`)
 - Express server on port 3000
@@ -106,6 +196,10 @@ http://localhost:3000
 - Delegates to standalone `sdk-verifiers/node`, `sdk-verifiers/php`, and `sdk-verifiers/java` scripts for official SDK authentication verification
 - OAuth 2.0 token generation with SHA512 secrets
 - Raw HTTP endpoint testing with scenario coverage
+
+### CI/CD entrypoint (`cli.js`)
+- Headless batch runner for pipelines - see [CI/CD Pipeline Usage](#cicd-pipeline-usage) above
+
 
 ### Frontend (`frontend.html`)
 - Interactive dashboard with tabbed interface
