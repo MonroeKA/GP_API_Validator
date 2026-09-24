@@ -887,6 +887,7 @@
             
             const exampleTests = Object.entries(results.exampleTests || {});
             const documentedCodes = results.documentedStatusCodes || [];
+            const sdkVerifications = results.sdkVerifications || (results.sdkVerification ? [results.sdkVerification] : []);
             
             const html = `
                 <div class="data-card">
@@ -904,6 +905,32 @@
                         </span>
                     </div>
                 </div>
+
+                ${sdkVerifications.length > 0 ? `
+                <div class="data-card">
+                    <h3>Official SDK Verification (${sdkVerifications.length})</h3>
+                    ${sdkVerifications.map(verification => `
+                        <div style="margin: 12px 0; padding: 12px; border: 1px solid #dee2e6; border-radius: 6px;">
+                            <div class="data-item">
+                                <span class="data-label">${escapeHtml(verification.language || verification.sdk)}:</span>
+                                <span class="data-value">
+                                    <span class="badge ${verification.verified ? 'badge-success' : 'badge-error'}">
+                                        ${verification.verified ? 'Verified' : 'Failed'}
+                                    </span>
+                                </span>
+                            </div>
+                            <div class="data-item">
+                                <span class="data-label">Package:</span>
+                                <span class="data-value">${escapeHtml(verification.sdk)} ${escapeHtml(verification.version || '')}</span>
+                            </div>
+                            <div class="data-item">
+                                <span class="data-label">Result:</span>
+                                <span class="data-value">${escapeHtml(verification.message || verification.error || 'No details returned')} (${verification.responseTime}ms)</span>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                ` : ''}
 
                 <div class="data-card">
                     <h3>🧪 Example Test Results (${exampleTests.length} tested)</h3>

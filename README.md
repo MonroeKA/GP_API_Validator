@@ -7,6 +7,8 @@ Automated tool to extract and test API endpoints from Global Payments developer 
 ## Features
 
 - **Automated Extraction**: Scrapes API documentation using Playwright
+  - Extracts code snippets from API Explorer pages and rendered integration guides
+  - Discovers every executable Global Payments cURL request in guide code blocks
   - Extracts code snippets in multiple languages (JSON, cURL)
   - Captures request structure (URL, headers, body)
   - Extracts documented HTTP status codes
@@ -15,6 +17,7 @@ Automated tool to extract and test API endpoints from Global Payments developer 
 
 - **Live API Testing**: Tests extracted endpoints against the actual API
   - Generates fresh OAuth 2.0 tokens
+  - Verifies sandbox authentication through the official Global Payments Node.js SDK
   - Tests multiple HTTP status code scenarios
   - Validates response structure and format
   - Records test results with timestamps
@@ -38,17 +41,30 @@ cd GP_API_Validator
 npm install
 ```
 
-3. Install Playwright browsers:
+3. Install the PHP and Java SDK verifiers:
+```bash
+cd sdk-verifiers/php
+composer install
+cd ../java
+mvn package -DskipTests
+mvn dependency:build-classpath -Dmdep.outputFile=classpath.txt
+cd ../..
+```
+The Node.js SDK verifier (`sdk-verifiers/node/verify.js`) needs no separate install step — it uses the `globalpayments-api` package already installed by `npm install` at the repo root.
+
+This requires PHP 8+, Composer, Java 8+, and Maven. The Java verifier uses the Developer Portal version `15.1.14`. The PHP portal still lists `2.0.0`, which predates the GP API authentication classes, so the verifier uses the current official release, `14.4.2`.
+
+4. Install Playwright browsers:
 ```bash
 npx playwright install firefox
 ```
 
-4. Create `.env` file from the example:
+5. Create `.env` file from the example:
 ```bash
 cp .env.example .env
 ```
 
-5. Edit `.env` and add your Global Payments API credentials:
+6. Edit `.env` and add your Global Payments API credentials:
 ```
 GP_API_APP_ID=your_app_id_here
 GP_API_APP_KEY=your_app_key_here
@@ -86,8 +102,9 @@ http://localhost:3000
 ### Backend (`server.js`)
 - Express server on port 3000
 - Playwright-based web scraper (Firefox headless)
+- Delegates to standalone `sdk-verifiers/node`, `sdk-verifiers/php`, and `sdk-verifiers/java` scripts for official SDK authentication verification
 - OAuth 2.0 token generation with SHA512 secrets
-- Live API testing with scenario coverage
+- Raw HTTP endpoint testing with scenario coverage
 
 ### Frontend (`frontend.html`)
 - Interactive dashboard with tabbed interface
@@ -97,13 +114,14 @@ http://localhost:3000
 
 ### Extraction Process
 1. Navigate to documentation page
-2. Detect available languages (JSON, cURL)
-3. For each language:
+2. Detect API Explorer controls or rendered guide code blocks
+3. For API Explorer pages, process each language:
    - Switch language if needed (2s wait for UI update)
    - JSON: Extract from 3 tabs (URL & QUERY, HEADERS, BODY)
    - cURL: Extract single complete command
-4. Extract documented HTTP status codes
-5. Parse endpoint metadata (method, URL, headers)
+4. For guide pages, extract and label every GP API cURL request from Playwright-rendered `<pre>` blocks
+5. Parse each request's method, URL, headers, and body
+6. Test each parsed request independently, then run SDK verification as an additional stage
 
 ## API Endpoints
 
@@ -116,6 +134,7 @@ http://localhost:3000
   ```
 
 - `GET /api/health` - Health check
+- `GET /api/sdk-verification` - Verify configured credentials through the Node.js, PHP, and Java SDKs
 - `GET /api/list-results` - List saved extraction results  
 - `GET /api/load-result/:filename` - Load a specific result file
 
@@ -145,6 +164,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## Dependencies
 
 - `express` - Web server framework
+- `globalpayments-api` - Official Global Payments Node.js SDK
 - `playwright` - Browser automation for scraping
 - Node.js 18+ (native fetch support)
 
@@ -165,6 +185,12 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 - Secret = SHA512(nonce + appKey)
 - Tokens valid for ~24 hours
 - Auto-refreshes on each test run
+
+### Validation Layers
+- SDK verification authenticates with the official Node.js, PHP, and Java SDKs using the configured sandbox credentials
+- Each language runs as an isolated subprocess script (`sdk-verifiers/node/verify.js`, `sdk-verifiers/php/verify.php`, `sdk-verifiers/java/src/main/java/SdkVerifier.java`) that prints a single JSON result line, so the three SDKs stay independent of the Node.js server's own dependency versions
+- HTTP validation replays extracted requests because the SDK does not expose every documented endpoint as a generic operation
+- SDK and HTTP results are reported independently
 
 ## Troubleshooting
 

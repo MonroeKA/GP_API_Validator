@@ -3,6 +3,9 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+sdk-verifiers/php/vendor/
+sdk-verifiers/java/target/
+sdk-verifiers/java/classpath.txt
 
 # Test results and generated data
 api-responses-*.json

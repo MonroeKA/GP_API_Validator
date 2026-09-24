@@ -7,10 +7,13 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = 3000;
+const execFileAsync = promisify(execFile);
 
 // Middleware
 app.use(express.json());
@@ -86,6 +89,33 @@ app.get('/api/health', (req, res) => {
     res.json({ status: 'OK', message: 'Server is running' });
 });
 
+app.get('/api/sdk-verification', async (req, res) => {
+    try {
+        const sdkVerifications = await verifyAllGlobalPaymentsSdks();
+        res.json({ sdkVerifications });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+function validateSdkConfiguration(envVars) {
+    const errors = [];
+    const isPlaceholder = value => !value || /^(your_|replace|example)|_here$/i.test(value);
+    const environment = envVars.GP_API_ENVIRONMENT?.toLowerCase();
+
+    if (isPlaceholder(envVars.GP_API_APP_ID)) {
+        errors.push('GP_API_APP_ID must contain a real sandbox app ID');
+    }
+    if (isPlaceholder(envVars.GP_API_APP_KEY)) {
+        errors.push('GP_API_APP_KEY must contain a real sandbox app key');
+    }
+    if (!['sandbox', 'test'].includes(environment)) {
+        errors.push('GP_API_ENVIRONMENT must be sandbox or test');
+    }
+
+    return errors;
+}
+
 // Generate fresh access token
 async function generateFreshToken() {
     try {
@@ -104,6 +134,11 @@ async function generateFreshToken() {
                 }
             }
         });
+
+        const configurationErrors = validateSdkConfiguration(envVars);
+        if (configurationErrors.length > 0) {
+            throw new Error(configurationErrors.join('; '));
+        }
         
         // Use OAuth 2.0 to get access token from Global Payments
         const tokenEndpoint = 'https://apis.sandbox.globalpay.com/ucp/accesstoken';
@@ -185,24 +220,15 @@ async function extractFromUrl(testUrl) {
     };
     
     try {
-        // Try multiple loading strategies
         console.log('   Attempting to load page...');
-        
+
         try {
-            // First attempt: wait for networkidle
-            await page.goto(testUrl, { waitUntil: 'networkidle', timeout: 15000 });
-        } catch (networkIdleError) {
-            console.log('   NetworkIdle timeout, trying domcontentloaded...');
-            try {
-                // Second attempt: just wait for DOM
-                await page.goto(testUrl, { waitUntil: 'domcontentloaded', timeout: 10000 });
-            } catch (domError) {
-                console.log('   DOM timeout, trying basic load...');
-                // Third attempt: basic load
-                await page.goto(testUrl, { waitUntil: 'load', timeout: 8000 });
-            }
+            await page.goto(testUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
+        } catch (navigationError) {
+            console.log(`   Navigation did not fully settle: ${navigationError.message}`);
         }
-        
+
+        await page.locator('main, pre, .api-explorer__try-it').first().waitFor({ state: 'attached', timeout: 30000 });
         console.log('   Page loaded successfully');
         extractedData = await extractFromEndpoint(page);
         
@@ -743,6 +769,43 @@ async function extractFromEndpoint(page) {
                 }
             }
         }
+
+        if (snippetCount === 0) {
+            console.log(`\n   📋 No API Explorer snippets found; scanning rendered guide code blocks...`);
+            const guideSnippets = await page.evaluate(() => {
+                const headings = Array.from(document.querySelectorAll('h2, h3, h4, h5'));
+
+                return Array.from(document.querySelectorAll('pre'))
+                    .map((element, index) => {
+                        const code = element.textContent?.trim() || '';
+                        if (!/^curl\s/i.test(code) || !/https:\/\/apis\.(sandbox\.)?globalpay\.com\/ucp\//i.test(code)) {
+                            return null;
+                        }
+
+                        const precedingHeadings = headings.filter(heading =>
+                            heading.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING
+                        );
+                        const heading = precedingHeadings.at(-1)?.textContent?.trim() || `Request ${index + 1}`;
+
+                        return { heading, code };
+                    })
+                    .filter(Boolean);
+            });
+
+            guideSnippets.forEach((snippet, index) => {
+                const name = snippet.heading.replace(/[^a-z0-9]+/gi, '_').replace(/^_|_$/g, '').toLowerCase();
+                const key = `curl_${name || 'request'}_${index + 1}`;
+                requestDetails.codeSnippets[key] = snippet.code;
+                requestDetails.codeSnippets._labels ??= {};
+                requestDetails.codeSnippets._labels[key] = snippet.heading;
+                snippetCount++;
+            });
+
+            if (guideSnippets.length > 0) {
+                availableLanguages = ['curl'];
+                console.log(`      ✓ Extracted ${guideSnippets.length} executable cURL request(s) from guide`);
+            }
+        }
         
         // ===== TASK 3: EXTRACT RESPONSE CODE DEFINITIONS =====
         console.log(`\n   📋 TASK 3: Extracting response code definitions...`);
@@ -864,17 +927,22 @@ async function extractFromEndpoint(page) {
         try {
             // Extract HTTP method
             const pageText = await page.evaluate(() => document.body.innerText);
-            const methodMatch = pageText.match(/\b(GET|POST|PUT|DELETE|PATCH|HEAD)\b/i);
-            if (methodMatch) {
-                requestDetails.method = methodMatch[1].toUpperCase();
+            const firstCurlSnippet = Object.entries(requestDetails.codeSnippets)
+                .find(([key, code]) => key !== '_labels' && typeof code === 'string' && /^curl\s/i.test(code))?.[1];
+            const parsedCurl = firstCurlSnippet ? parseCurlSnippet(firstCurlSnippet) : null;
+
+            if (parsedCurl) {
+                requestDetails.method = parsedCurl.method;
+                requestDetails.url = parsedCurl.url;
+                requestDetails.headers = parsedCurl.headers;
+                requestDetails.body = parsedCurl.body;
                 console.log(`      ✓ HTTP Method: ${requestDetails.method}`);
-            }
-            
-            // Extract URL from code or documentation
-            const urlMatch = pageText.match(/https?:\/\/[^\s"'<>]+/);
-            if (urlMatch) {
-                requestDetails.url = urlMatch[0];
                 console.log(`      ✓ Endpoint URL: ${requestDetails.url.substring(0, 60)}...`);
+            } else {
+                const methodMatch = pageText.match(/\b(GET|POST|PUT|DELETE|PATCH|HEAD)\b/i);
+                const urlMatch = pageText.match(/https?:\/\/apis\.(?:sandbox\.)?globalpay\.com\/ucp\/[^\s"'<>]+/i);
+                requestDetails.method = methodMatch?.[1]?.toUpperCase() || null;
+                requestDetails.url = urlMatch?.[0] || null;
             }
             
             // Extract headers from first code snippet
@@ -966,6 +1034,111 @@ function hasResponseSignature(obj) {
            (obj.response && typeof obj.response === 'object');
 }
 
+async function runExternalSdkVerifier(command, args, cwd, envVars, fallbackResult) {
+    const startedAt = Date.now();
+
+    try {
+        const { stdout } = await execFileAsync(command, args, {
+            cwd,
+            env: {
+                ...process.env,
+                GP_API_APP_ID: envVars.GP_API_APP_ID,
+                GP_API_APP_KEY: envVars.GP_API_APP_KEY
+            },
+            timeout: 30000,
+            windowsHide: true
+        });
+        const resultLine = stdout.trim().split(/\r?\n/).reverse().find(line => line.trim().startsWith('{'));
+
+        if (!resultLine) {
+            throw new Error('SDK verifier did not return JSON');
+        }
+
+        return JSON.parse(resultLine);
+    } catch (error) {
+        const details = error.code === 'ENOENT'
+            ? `${fallbackResult.language} runtime is not installed or not on PATH`
+            : (error.stderr || error.message || 'SDK verifier failed');
+
+        return {
+            ...fallbackResult,
+            verified: false,
+            environment: 'TEST',
+            authentication: 'failed',
+            responseTime: Date.now() - startedAt,
+            error: String(details).trim().substring(0, 500)
+        };
+    }
+}
+
+async function verifyAllGlobalPaymentsSdks() {
+    const envPath = path.join(process.cwd(), '.env');
+    const envData = await fs.readFile(envPath, 'utf8');
+    const envVars = {};
+
+    envData.split('\n').forEach(line => {
+        if (line.trim() && !line.startsWith('#')) {
+            const [key, value] = line.split('=');
+            if (key && value) {
+                envVars[key.trim()] = value.trim().split('#')[0].trim();
+            }
+        }
+    });
+
+    const configurationErrors = validateSdkConfiguration(envVars);
+    if (configurationErrors.length > 0) {
+        const error = `Configuration required: ${configurationErrors.join('; ')}`;
+        return [
+            { sdk: 'globalpayments-api', language: 'Node.js', version: '3.11.1' },
+            { sdk: 'globalpayments/php-sdk', language: 'PHP', version: '14.4.2' },
+            { sdk: 'com.globalpayments:globalpayments-sdk', language: 'Java', version: '15.1.14' }
+        ].map(verification => ({
+            ...verification,
+            verified: false,
+            environment: 'TEST',
+            authentication: 'not_attempted',
+            responseTime: 0,
+            error
+        }));
+    }
+
+    const nodeDirectory = path.join(__dirname, 'sdk-verifiers', 'node');
+    const phpDirectory = path.join(__dirname, 'sdk-verifiers', 'php');
+    const javaDirectory = path.join(__dirname, 'sdk-verifiers', 'java');
+    const javaFallback = {
+        sdk: 'com.globalpayments:globalpayments-sdk',
+        language: 'Java',
+        version: '15.1.14'
+    };
+    const javaVerification = fs.readFile(path.join(javaDirectory, 'classpath.txt'), 'utf8')
+        .then(javaDependencies => {
+            const javaClasspath = [path.join(javaDirectory, 'target', 'classes'), javaDependencies.trim()].join(path.delimiter);
+            return runExternalSdkVerifier('java', ['-cp', javaClasspath, 'SdkVerifier'], javaDirectory, envVars, javaFallback);
+        })
+        .catch(error => ({
+            ...javaFallback,
+            verified: false,
+            environment: 'TEST',
+            authentication: 'failed',
+            responseTime: 0,
+            error: `Java verifier setup required: ${error.message}`
+        }));
+
+    return Promise.all([
+        runExternalSdkVerifier(process.execPath, ['verify.js'], nodeDirectory, envVars, {
+            sdk: 'globalpayments-api',
+            language: 'Node.js',
+            version: '3.11.1'
+        }),
+        runExternalSdkVerifier('php', ['verify.php'], phpDirectory, envVars, {
+            sdk: 'globalpayments/php-sdk',
+            language: 'PHP',
+            version: '14.4.2'
+        }),
+        javaVerification
+    ]);
+}
+
 async function testAllSnippets(extractedData) {
     const documentedStatusCodes = extractedData.documentedStatusCodes || [];
     
@@ -995,6 +1168,7 @@ async function testAllSnippets(extractedData) {
     
     const results = {
         documentedStatusCodes: documentedStatusCodes,
+        sdkVerifications: [],
         exampleTests: {}
     };
     
@@ -1004,7 +1178,7 @@ async function testAllSnippets(extractedData) {
         
         // Build base request data for this example
         const baseRequestData = {
-            method: extractedData.method || 'POST',
+            method: exampleData.method || extractedData.method || 'POST',
             url: exampleData.url || extractedData.url,
             headers: exampleData.headers || {},
             body: exampleData.body,
@@ -1027,6 +1201,15 @@ async function testAllSnippets(extractedData) {
         exampleTestResults.statusCodeTests = await testStatusCodesForExample(baseRequestData, documentedStatusCodes);
         
         results.exampleTests[exampleName] = exampleTestResults;
+    }
+
+    results.sdkVerifications = await verifyAllGlobalPaymentsSdks();
+    for (const verification of results.sdkVerifications) {
+        if (verification.verified) {
+            console.log(`✅ Official Global Payments ${verification.language} SDK verification passed`);
+        } else {
+            console.warn(`⚠️  Official Global Payments ${verification.language} SDK verification failed: ${verification.error || verification.message}`);
+        }
     }
     
     return results;
@@ -1099,6 +1282,11 @@ function parseSnippetsByExample(codeSnippets) {
             } catch (parseError) {
                 console.log(`      ⚠️ Could not parse ${key}: ${parseError.message}`);
             }
+        } else if (lang === 'curl') {
+            const parsedCurl = parseCurlSnippet(code);
+            if (parsedCurl) {
+                examples[exampleName] = parsedCurl;
+            }
         }
     }
     
@@ -1107,10 +1295,40 @@ function parseSnippetsByExample(codeSnippets) {
     return examples;
 }
 
+function parseCurlSnippet(code) {
+    const urlMatch = code.match(/https?:\/\/apis\.(?:sandbox\.)?globalpay\.com\/ucp\/[^\s'"\\]+/i);
+    if (!urlMatch) return null;
+
+    const explicitMethod = code.match(/--request\s+(GET|POST|PUT|DELETE|PATCH|HEAD)/i)?.[1];
+    const headers = {};
+    for (const match of code.matchAll(/--header\s+['"]([^:'"]+):\s*([^'"]+)['"]/gi)) {
+        headers[match[1].trim()] = match[2].trim();
+    }
+
+    const bodyMatch = code.match(/--data(?:-raw)?\s+'([\s\S]*?)'\s*(?:\\\s*)?$/i)
+        || code.match(/--data(?:-raw)?\s+"([\s\S]*?)"\s*(?:\\\s*)?$/i);
+    let body = null;
+    if (bodyMatch) {
+        try {
+            body = JSON.parse(bodyMatch[1]);
+        } catch {
+            body = bodyMatch[1];
+        }
+    }
+
+    return {
+        method: (explicitMethod || (bodyMatch ? 'POST' : 'GET')).toUpperCase(),
+        url: urlMatch[0],
+        headers,
+        body
+    };
+}
+
 async function testStatusCodesForExample(baseRequestData, documentedCodes) {
     const testResults = {};
+    const codesToTest = documentedCodes.length > 0 ? documentedCodes : ['baseline'];
     
-    for (const code of documentedCodes) {
+    for (const code of codesToTest) {
         console.log(`      🔬 Testing scenario for ${code}...`);
         
         try {
@@ -1118,6 +1336,11 @@ async function testStatusCodesForExample(baseRequestData, documentedCodes) {
             let requestData = { ...baseRequestData };
             
             switch (code) {
+                case 'baseline':
+                    console.log(`         Scenario: Execute extracted documentation request`);
+                    result = await testLiveAPI(requestData);
+                    break;
+
                 case '200':
                     // Test 1: Valid request with proper auth
                     console.log(`         Scenario: Valid request with proper authentication`);
@@ -1169,11 +1392,14 @@ async function testStatusCodesForExample(baseRequestData, documentedCodes) {
             }
             
             // Record result
+            const matched = code === 'baseline'
+                ? result.statusCode >= 200 && result.statusCode < 300
+                : String(result.statusCode) === String(code);
             testResults[code] = {
                 scenario: getScenarioName(code),
-                expectedCode: code,
+                expectedCode: code === 'baseline' ? '2xx' : code,
                 actualCode: result.statusCode,
-                matched: String(result.statusCode) === String(code),
+                matched: matched,
                 statusText: result.statusText,
                 responseTime: result.responseTime,
                 responseBody: result.body,
@@ -1181,10 +1407,10 @@ async function testStatusCodesForExample(baseRequestData, documentedCodes) {
                 url: result.url
             };
             
-            if (String(result.statusCode) === String(code)) {
-                console.log(`         ✅ Successfully triggered ${code}`);
+            if (matched) {
+                console.log(`         ✅ ${code === 'baseline' ? 'Request succeeded' : `Successfully triggered ${code}`}`);
             } else {
-                console.log(`         ⚠️  Got ${result.statusCode} instead of ${code}`);
+                console.log(`         ⚠️  Got ${result.statusCode} instead of ${code === 'baseline' ? 'a 2xx response' : code}`);
             }
             
         } catch (error) {
@@ -1206,6 +1432,7 @@ async function testStatusCodesForExample(baseRequestData, documentedCodes) {
 
 function getScenarioName(code) {
     const scenarios = {
+    'baseline': 'Execute extracted documentation request',
         '200': 'Valid request with proper authentication',
         '400': 'Bad Request - invalid parameters',
         '401': 'Unauthorized - invalid/missing authentication',
