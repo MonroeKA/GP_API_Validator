@@ -42,6 +42,17 @@ app.post('/api/extract', async (req, res) => {
         if (runLiveTest && extractedData.method && extractedData.url) {
             console.log('🚀 Running live API tests for each code snippet...');
             testResults = await testAllSnippets(extractedData);
+            
+            // Add token permissions to test results for display
+            if (testResults) {
+                try {
+                    const tokenFile = path.join(process.cwd(), 'gp-access-token.json');
+                    const tokenData = JSON.parse(await fs.readFile(tokenFile, 'utf8'));
+                    testResults.accountPermissions = tokenData.scope;
+                } catch (error) {
+                    console.log('⚠️  Could not load token permissions:', error.message);
+                }
+            }
         }
         
         // Save results if requested
@@ -691,7 +702,7 @@ async function extractFromEndpoint(page) {
                                         }
                                         
                                         const text = codeElement.textContent.trim();
-                                        console.log(`[DEBUG] Extracted ${tabName}: ${text.substring(0, 50)}...`);
+                                        console.log(`[DEBUG] Extracted ${tabName}: ${text.substring(0, 50)}... (length: ${text.length})`);
                                         return text;
                                     }
                                 }, { languageCode: lang, tabName: tabInfo.name, isSingleBlock: tabInfo.isSingleBlock });
@@ -935,6 +946,42 @@ async function extractFromEndpoint(page) {
     return requestDetails;
 }
 
+// GP resource ID prefixes that are stateful — they reference objects that must
+// be created first in a prior flow step and won't exist in a fresh sandbox test.
+const RESOURCE_ID_PREFIXES = ['AUT_', 'PYR_', 'PMT_', 'TRN_', 'BAT_', 'DEP_', 'DIS_', 'LNK_', 'ACT_', 'MER_', 'ACC_'];
+
+function isDocSampleResourceId(value) {
+    if (typeof value !== 'string') return false;
+    return RESOURCE_ID_PREFIXES.some(prefix => value.startsWith(prefix));
+}
+
+// Recursively walk the body and remove any field whose value is a doc-sample
+// resource ID (e.g. AUT_d455464a..., PYR_84fd9c...).  The field is removed
+// rather than nulled so GP doesn't reject it as an unexpected null.
+function stripNestedResourceIds(obj) {
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj;
+
+    const result = {};
+    for (const [key, value] of Object.entries(obj)) {
+        if (isDocSampleResourceId(value)) {
+            console.log(`   🧹 Stripped doc-sample resource ID field "${key}": ${value}`);
+            continue; // drop the field
+        }
+        if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+            const nested = stripNestedResourceIds(value);
+            // Only keep the nested object if it still has keys after stripping
+            if (Object.keys(nested).length > 0) {
+                result[key] = nested;
+            } else {
+                console.log(`   🧹 Stripped empty nested object "${key}" after ID removal`);
+            }
+        } else {
+            result[key] = value;
+        }
+    }
+    return result;
+}
+
 function hasRequestSignature(obj) {
     const requestFields = ['amount', 'card', 'payment', 'account_id', 'currency', 'reference_id'];
     return requestFields.some(field => obj.hasOwnProperty(field));
@@ -1051,24 +1098,32 @@ function parseSnippetsByExample(codeSnippets) {
             // Tab names: url___query, headers, body
             if (key.includes('_url___query_')) {
                 // Split on _url___query_ and take everything after
-                exampleName = key.split('_url___query_')[1];
+                const afterSplit = key.split('_url___query_')[1];
+                if (afterSplit && afterSplit.length > 0) {
+                    exampleName = afterSplit;
+                }
             } else if (key.includes('_headers_')) {
                 // Split on _headers_ and take everything after
-                exampleName = key.split('_headers_')[1];
+                const afterSplit = key.split('_headers_')[1];
+                if (afterSplit && afterSplit.length > 0) {
+                    exampleName = afterSplit;
+                }
             } else if (key.includes('_body_')) {
                 // Split on _body_ and take everything after
-                exampleName = key.split('_body_')[1];
+                const afterSplit = key.split('_body_')[1];
+                if (afterSplit && afterSplit.length > 0) {
+                    exampleName = afterSplit;
+                }
             }
         } else {
             // For other languages (curl, etc), everything after language is the example name
-            exampleName = parts.slice(1).join('_');
+            const afterLang = parts.slice(1).join('_');
+            if (afterLang && afterLang.length > 0) {
+                exampleName = afterLang;
+            }
         }
         
-        // Skip if we couldn't extract a valid example name
-        if (!exampleName || exampleName === 'default') {
-            console.log(`      ⚠️ Could not extract example name from key: ${key}`);
-            continue;
-        }
+        console.log(`      📝 Processing snippet: ${key} -> example: ${exampleName}`);
         
         if (!examples[exampleName]) {
             examples[exampleName] = {
@@ -1245,11 +1300,16 @@ async function testLiveAPI(requestData) {
         const token = requestData.useInvalidToken ? 'INVALID_TOKEN_12345' : tokenData.token;
         
         // Build headers - merge example headers with required auth headers
-        // Filter out 'authorization' from example headers to prevent placeholder tokens from overriding real token
+        // Filter out 'authorization' and placeholder values from example headers
         const exampleHeaders = requestData.headers || {};
         const filteredExampleHeaders = Object.keys(exampleHeaders).reduce((acc, key) => {
-            if (key.toLowerCase() !== 'authorization') {
-                acc[key] = exampleHeaders[key];
+            const value = exampleHeaders[key];
+            // Skip authorization header and any placeholder values
+            if (key.toLowerCase() !== 'authorization' && 
+                value !== 'value_needed' && 
+                value !== 'YOUR_API_KEY' &&
+                value !== 'YOUR_TOKEN') {
+                acc[key] = value;
             }
             return acc;
         }, {});
@@ -1317,10 +1377,18 @@ async function testLiveAPI(requestData) {
                         account_name: tokenData.scope.accounts[0].name
                     };
                 }
+
+                // Strip nested resource reference IDs that are doc sample values and
+                // don't exist in this sandbox account (AUT_, PYR_, PMT_, TRN_, etc.).
+                // These cause 404 RESOURCE_NOT_FOUND because they reference objects
+                // from prior flow steps (e.g. 3DS auth sessions, stored payment tokens).
+                requestBody = stripNestedResourceIds(requestBody);
             }
         }
         
         console.log(`📡 Making ${requestData.method} request to ${requestData.url}`);
+        console.log(`📋 Headers:`, JSON.stringify(headers, null, 2));
+        console.log(`📦 Request Body:`, requestBody ? JSON.stringify(requestBody, null, 2) : 'none');
         
         const startTime = Date.now();
         const response = await fetch(requestData.url, {
