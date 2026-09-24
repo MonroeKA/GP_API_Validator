@@ -270,6 +270,7 @@ async function extractFromEndpoint(page) {
         responseExamples: {},
         documentedStatusCodes: [],
         documentedStatusCodeDescriptions: {},
+        documentedErrorCodesByStatus: {},
         codeSnippets: {},
         examples: [],
         extractedDocumentation: {}
@@ -814,6 +815,7 @@ async function extractFromEndpoint(page) {
             // Find response code dropdown button using Blueprint button selector
             // Response code button: class="bp5-button bp5-minimal" with text containing status code
             const foundStatusCodes = new Map();
+            let responseCodeSelectorButton = null;
             
             // Strategy 1: Look for Blueprint buttons with status codes (200 Success, etc)
             const responseCodeButtons = await page.locator('button.bp5-button.bp5-minimal').all();
@@ -826,6 +828,7 @@ async function extractFromEndpoint(page) {
                         const code = match[1];
                         const desc = match[2].trim();
                         foundStatusCodes.set(code, `${code} ${desc}`);
+                        responseCodeSelectorButton = btn;
                         console.log(`      ✓ Found response code button: ${code} ${desc}`);
                         
                         // Click to open dropdown and get all options
@@ -917,6 +920,58 @@ async function extractFromEndpoint(page) {
             } else {
                 console.log(`      ⚠️ No response codes found`);
             }
+
+            // ===== TASK 3b: EXTRACT ENDPOINT-SPECIFIC EXPECTED error_code VALUES =====
+            // The response-code selector above only tells us the documented HTTP status
+            // codes exist - it doesn't tell us what the API actually returns for each one.
+            // For every documented status, select it in the (synced) response-code dropdown
+            // and read the "possible values" enumeration for the `error_code` field in the
+            // "Response Parameters" documentation panel. This is endpoint-specific ground
+            // truth (e.g. a 400 on one endpoint may only ever return MANDATORY_DATA_MISSING,
+            // while another may also return INVALID_TRANSACTION_ACTION) that we later use to
+            // verify live test responses actually match what's documented, not just that the
+            // HTTP status number happens to line up.
+            if (responseCodeSelectorButton && foundStatusCodes.size > 0) {
+                console.log(`      🔍 Extracting documented error_code values per status...`);
+                for (const [code, label] of foundStatusCodes) {
+                    try {
+                        await responseCodeSelectorButton.click();
+                        await page.waitForTimeout(400);
+
+                        const menuItem = page.locator('a[role="menuitem"]', { hasText: label }).first();
+                        if (await menuItem.count() === 0) {
+                            continue;
+                        }
+                        await menuItem.click();
+                        await page.waitForTimeout(500);
+
+                        const responseSection = page.locator('div.response-section', {
+                            has: page.locator('h6', { hasText: 'Response Parameters' })
+                        }).first();
+                        const errorCodeRow = responseSection.locator('div.api-explorer__model-row', {
+                            has: page.locator('span.api-explorer__model-row-name', { hasText: /^error_code$/ })
+                        }).first();
+
+                        if (await errorCodeRow.count() > 0) {
+                            const showValuesBtn = errorCodeRow.locator('button', { hasText: 'Show Values' });
+                            if (await showValuesBtn.count() > 0) {
+                                await showValuesBtn.click();
+                                await page.waitForTimeout(300);
+                            }
+                            const values = (await errorCodeRow.locator('ul li').allTextContents())
+                                .map(v => v.trim())
+                                .filter(Boolean);
+                            if (values.length > 0) {
+                                requestDetails.documentedErrorCodesByStatus[code] = values;
+                                console.log(`         ✓ ${code}: ${values.join(', ')}`);
+                            }
+                        }
+                    } catch (perCodeError) {
+                        // Some status codes (e.g. 2xx success) don't expose an error_code
+                        // field at all - that's expected, so just move on to the next code.
+                    }
+                }
+            }
         } catch (statusError) {
             console.log(`      ⚠️ Error extracting response codes: ${statusError.message}`);
         }
@@ -1001,6 +1056,80 @@ async function extractFromEndpoint(page) {
     requestDetails.availableLanguages = availableLanguages;
     
     return requestDetails;
+}
+
+// Generic fallback reference of error_code values Global Payments documents per HTTP
+// status, compiled from https://developer.globalpayments.com/api/definitions/responses
+// (accessed 2026-09-24). Used only when an endpoint's own documentation page doesn't
+// yield endpoint-specific values via TASK 3b in extractFromEndpoint, so live test
+// validation still has *some* documented basis to check response content against.
+const GP_ERROR_CODES_BY_STATUS_FALLBACK = {
+    '400': ['INVALID_REQUEST_DATA', 'MANDATORY_DATA_MISSING', 'INVALID_TRANSACTION_ACTION', 'INVALID_PAYMENT_METHOD_ACTION', 'INVALID_BATCH_ACTION', 'INVALID_DISPUTE_ACTION'],
+    '401': ['NOT_AUTHENTICATED'],
+    '403': ['ACTION_NOT_AUTHORIZED'],
+    '404': ['RESOURCE_NOT_FOUND'],
+    '405': ['INVALID_TRANSACTION_ACTION'],
+    '409': ['DUPLICATE_TRANSACTION', 'DUPLICATE_ACTION'],
+    '500': ['SYSTEM_ERROR_DOWNSTREAM'],
+    '501': ['UNKNOWN_RESPONSE', 'SYSTEM_ERROR_DOWNSTREAM'],
+    '502': ['SYSTEM_ERROR_DOWNSTREAM', 'UNAUTHORIZED_DOWNSTREAM', 'DUPLICATE_TRANSACTION'],
+    '504': ['TIMEOUT_DOWNSTREAM']
+};
+
+// Checks whether a live test's response body is actually consistent with what Global
+// Payments documents for the given status code, rather than trusting the HTTP status
+// number alone. `documentedErrorCodes` is the endpoint-specific list scraped from the
+// docs page (TASK 3b) when available, falling back to the generic reference table.
+function validateResponseContent(code, responseBody, documentedErrorCodes) {
+    const isSuccessScenario = code === 'baseline' || /^2\d{2}$/.test(code);
+
+    if (isSuccessScenario) {
+        if (!responseBody || typeof responseBody !== 'object') {
+            return { contentValid: false, reason: 'Response body is missing or not a JSON object' };
+        }
+        if (responseBody.error_code || responseBody.error) {
+            return {
+                contentValid: false,
+                reason: `Expected a successful payload but received error_code "${responseBody.error_code}"`
+            };
+        }
+        return { contentValid: true, reason: 'Response body does not contain an error payload' };
+    }
+
+    if (!responseBody || typeof responseBody !== 'object') {
+        return { contentValid: false, reason: 'Response body is missing or not a JSON object' };
+    }
+
+    const actualErrorCode = responseBody.error_code;
+    if (!actualErrorCode) {
+        return {
+            contentValid: false,
+            reason: `Expected an error_code describing the ${code} failure, but none was present in the response`
+        };
+    }
+
+    const expectedErrorCodes = (documentedErrorCodes && documentedErrorCodes.length > 0)
+        ? documentedErrorCodes
+        : GP_ERROR_CODES_BY_STATUS_FALLBACK[code];
+
+    if (!expectedErrorCodes || expectedErrorCodes.length === 0) {
+        return {
+            contentValid: true,
+            reason: `No documented error_code reference available for ${code}; skipped content check`
+        };
+    }
+
+    if (!expectedErrorCodes.includes(actualErrorCode)) {
+        return {
+            contentValid: false,
+            reason: `error_code "${actualErrorCode}" is not one of the codes Global Payments documents for HTTP ${code} (expected one of: ${expectedErrorCodes.join(', ')})`
+        };
+    }
+
+    return {
+        contentValid: true,
+        reason: `error_code "${actualErrorCode}" matches documented ${code} behavior`
+    };
 }
 
 function hasRequestSignature(obj) {
@@ -1141,6 +1270,7 @@ async function verifyAllGlobalPaymentsSdks() {
 
 async function testAllSnippets(extractedData) {
     const documentedStatusCodes = extractedData.documentedStatusCodes || [];
+    const documentedErrorCodesByStatus = extractedData.documentedErrorCodesByStatus || {};
     
     // Attempt to generate fresh token, but don't fail if we can't
     try {
@@ -1198,7 +1328,7 @@ async function testAllSnippets(extractedData) {
         
         // Run status code tests for this specific example
         console.log(`\n   🎯 Testing status code scenarios for "${exampleName}"...`);
-        exampleTestResults.statusCodeTests = await testStatusCodesForExample(baseRequestData, documentedStatusCodes);
+        exampleTestResults.statusCodeTests = await testStatusCodesForExample(baseRequestData, documentedStatusCodes, documentedErrorCodesByStatus);
         
         results.exampleTests[exampleName] = exampleTestResults;
     }
@@ -1324,7 +1454,7 @@ function parseCurlSnippet(code) {
     };
 }
 
-async function testStatusCodesForExample(baseRequestData, documentedCodes) {
+async function testStatusCodesForExample(baseRequestData, documentedCodes, documentedErrorCodesByStatus = {}) {
     const testResults = {};
     const codesToTest = documentedCodes.length > 0 ? documentedCodes : ['baseline'];
     
@@ -1364,42 +1494,76 @@ async function testStatusCodesForExample(baseRequestData, documentedCodes) {
                     break;
                     
                 case '403':
-                    // Test 4: Insufficient permissions
+                    // Test 4: Insufficient permissions. Prefer swapping just the merchant
+                    // segment of the *actual* endpoint URL so we're still exercising the
+                    // documented request - falling back to a generic restricted-merchant
+                    // probe only when the endpoint has no merchant-scoped path segment.
                     console.log(`         Scenario: Request to restricted resource`);
                     requestData = { ...baseRequestData };
-                    requestData.url = 'https://apis.sandbox.globalpay.com/ucp/merchants/MER_RESTRICTED_ACCESS_DENIED/accounts';
+                    if (/\/merchants\/[^\/?]+/i.test(requestData.url)) {
+                        requestData.url = requestData.url.replace(/\/merchants\/[^\/?]+/i, '/merchants/MER_RESTRICTED_ACCESS_DENIED');
+                    } else {
+                        requestData.url = 'https://apis.sandbox.globalpay.com/ucp/merchants/MER_RESTRICTED_ACCESS_DENIED/accounts';
+                    }
                     result = await testLiveAPI(requestData);
                     break;
                     
-                case '404':
-                    // Test 5: Non-existent endpoint
+                case '404': {
+                    // Test 5: Non-existent resource. Append a clearly-fake path segment
+                    // instead of replacing the last one - replacing it risks turning a
+                    // collection endpoint (e.g. ".../accounts") into a completely different,
+                    // coincidentally-valid route (e.g. a transaction "action" URL), which
+                    // triggers an unrelated error under a misleading 404 status.
                     console.log(`         Scenario: Request to non-existent endpoint`);
                     requestData = { ...baseRequestData };
-                    requestData.url = requestData.url.replace(/\/[^\/]*$/, '/endpoint-does-not-exist-xyz');
+                    const [basePath, queryString] = requestData.url.split('?');
+                    requestData.url = `${basePath.replace(/\/$/, '')}/does-not-exist-${Date.now()}`
+                        + (queryString ? `?${queryString}` : '');
                     result = await testLiveAPI(requestData);
                     break;
-                    
-                case '500':
-                case '501':
-                case '502':
-                    // Test server errors by making a valid request
-                    console.log(`         Scenario: ${getScenarioName(code)}`);
-                    result = await testLiveAPI(requestData);
-                    break;
+                }
                     
                 default:
+                    // Codes like 405/409/500/501/502/503/504 typically require a genuine
+                    // downstream/server failure, a real duplicate-processing race, or a
+                    // method that's actually unsupported - none of which can be safely or
+                    // deterministically reproduced by mutating a request against the live
+                    // sandbox. Recording them as "skipped" (rather than silently dropping
+                    // them, or reusing the baseline request and reporting a false failure)
+                    // keeps the report honest about what was and wasn't actually verified.
+                    console.log(`         Scenario: ${getScenarioName(code)} — cannot be reliably reproduced against the sandbox`);
+                    testResults[code] = {
+                        scenario: getScenarioName(code),
+                        expectedCode: code,
+                        actualCode: null,
+                        matched: null,
+                        skipped: true,
+                        skipReason: 'This status typically requires a genuine downstream/server failure or a duplicate-processing condition that cannot be safely or deterministically reproduced against the sandbox.',
+                        statusText: 'Skipped',
+                        responseTime: 0
+                    };
                     continue;
             }
             
-            // Record result
-            const matched = code === 'baseline'
+            // A test only truly "matches" when both the HTTP status AND the response
+            // content (error_code, for error scenarios) are consistent with what Global
+            // Payments documents - a coincidentally-correct status code with an unrelated
+            // error body is not a pass.
+            const statusCodeMatched = code === 'baseline'
                 ? result.statusCode >= 200 && result.statusCode < 300
                 : String(result.statusCode) === String(code);
+            const effectiveCode = code === 'baseline' ? String(result.statusCode) : code;
+            const contentCheck = validateResponseContent(effectiveCode, result.body, documentedErrorCodesByStatus[effectiveCode]);
+            const matched = statusCodeMatched && contentCheck.contentValid;
+
             testResults[code] = {
                 scenario: getScenarioName(code),
                 expectedCode: code === 'baseline' ? '2xx' : code,
                 actualCode: result.statusCode,
                 matched: matched,
+                statusCodeMatched: statusCodeMatched,
+                contentValid: contentCheck.contentValid,
+                contentValidationNote: contentCheck.reason,
                 statusText: result.statusText,
                 responseTime: result.responseTime,
                 responseBody: result.body,
@@ -1408,7 +1572,9 @@ async function testStatusCodesForExample(baseRequestData, documentedCodes) {
             };
             
             if (matched) {
-                console.log(`         ✅ ${code === 'baseline' ? 'Request succeeded' : `Successfully triggered ${code}`}`);
+                console.log(`         ✅ ${code === 'baseline' ? 'Request succeeded' : `Successfully triggered ${code}`} - ${contentCheck.reason}`);
+            } else if (statusCodeMatched && !contentCheck.contentValid) {
+                console.log(`         ⚠️  Got expected HTTP ${result.statusCode}, but response content didn't match: ${contentCheck.reason}`);
             } else {
                 console.log(`         ⚠️  Got ${result.statusCode} instead of ${code === 'baseline' ? 'a 2xx response' : code}`);
             }
@@ -1432,15 +1598,19 @@ async function testStatusCodesForExample(baseRequestData, documentedCodes) {
 
 function getScenarioName(code) {
     const scenarios = {
-    'baseline': 'Execute extracted documentation request',
+        'baseline': 'Execute extracted documentation request',
         '200': 'Valid request with proper authentication',
         '400': 'Bad Request - invalid parameters',
         '401': 'Unauthorized - invalid/missing authentication',
         '403': 'Forbidden - insufficient permissions',
         '404': 'Not Found - non-existent endpoint',
+        '405': 'Method not allowed',
+        '409': 'Conflict / duplicate action',
         '500': 'Internal server error',
         '501': 'Not implemented',
-        '502': 'Bad gateway'
+        '502': 'Bad gateway',
+        '503': 'Service unavailable',
+        '504': 'Timeout'
     };
     return scenarios[code] || `HTTP ${code}`;
 }

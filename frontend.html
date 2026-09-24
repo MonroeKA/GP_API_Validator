@@ -971,27 +971,38 @@
                                 <h5 style="color: #495057; margin: 15px 0 10px 0; font-size: 1.1em;">Status Code Tests</h5>
                                 
                                 ${hasTests ? statusCodeTests.map(([code, testResult]) => {
+                                    const skipped = testResult.skipped;
                                     const matched = testResult.matched;
-                                    const badgeClass = code === '200' ? 'badge-success' : 
+                                    const statusCodeMatched = testResult.statusCodeMatched ?? matched;
+                                    const badgeClass = skipped ? 'badge-secondary' :
+                                                      code === '200' ? 'badge-success' : 
                                                       code === '403' ? 'badge-error' :
                                                       code.startsWith('4') ? 'badge-warning' : 
                                                       code.startsWith('5') ? 'badge-error' : 'badge-secondary';
-                                    
+
+                                    let resultBadge;
+                                    if (skipped) {
+                                        resultBadge = '<span class="badge badge-secondary" style="margin-left: 10px;">Not independently testable</span>';
+                                    } else if (matched) {
+                                        resultBadge = '<span class="badge badge-success" style="margin-left: 10px;">✓ Matched</span>';
+                                    } else if (statusCodeMatched) {
+                                        resultBadge = '<span class="badge badge-warning" style="margin-left: 10px;">Status OK, content mismatch</span>';
+                                    } else {
+                                        resultBadge = '<span class="badge badge-warning" style="margin-left: 10px;">Different Code</span>';
+                                    }
+
                                     return `
-                                    <div style="margin: 15px 0; padding: 15px; border: 1px solid #dee2e6; border-radius: 8px; background: ${matched ? '#f0f9ff' : '#fff8f0'};">
+                                    <div style="margin: 15px 0; padding: 15px; border: 1px solid #dee2e6; border-radius: 8px; background: ${skipped ? '#f4f5f7' : matched ? '#f0f9ff' : '#fff8f0'};">
                                         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
                                             <h5 style="margin: 0; display: flex; align-items: center; gap: 8px;">
-                                                <span>${matched ? '✅' : '⚠️'}</span>
+                                                <span>${skipped ? '⏭️' : matched ? '✅' : '⚠️'}</span>
                                                 <span>HTTP ${code}</span>
                                             </h5>
                                             <div>
                                                 <span class="badge ${badgeClass}" style="font-size: 1em; padding: 6px 10px;">
                                                     ${testResult.actualCode || 'N/A'}
                                                 </span>
-                                                ${matched ? 
-                                                    '<span class="badge badge-success" style="margin-left: 10px;">✓ Matched</span>' : 
-                                                    '<span class="badge badge-warning" style="margin-left: 10px;">Different Code</span>'
-                                                }
+                                                ${resultBadge}
                                             </div>
                                         </div>
                                         <div class="data-item" style="margin: 5px 0;">
@@ -1002,10 +1013,22 @@
                                             <span class="data-label">Expected:</span>
                                             <span class="data-value">${testResult.expectedCode} - ${getExpectedStatusText(testResult.expectedCode)}</span>
                                         </div>
+                                        ${skipped ? `
+                                        <div class="data-item" style="margin: 5px 0;">
+                                            <span class="data-label">Why skipped:</span>
+                                            <span class="data-value">${escapeHtml(testResult.skipReason || '')}</span>
+                                        </div>
+                                        ` : `
                                         <div class="data-item" style="margin: 5px 0;">
                                             <span class="data-label">Actual Result:</span>
                                             <span class="data-value">${testResult.actualCode} ${testResult.statusText || ''} (${testResult.responseTime}ms)</span>
                                         </div>
+                                        ${testResult.contentValidationNote ? `
+                                        <div class="data-item" style="margin: 5px 0;">
+                                            <span class="data-label">Content check:</span>
+                                            <span class="data-value">${testResult.contentValid ? '✓' : '✗'} ${escapeHtml(testResult.contentValidationNote)}</span>
+                                        </div>
+                                        ` : ''}
                                         ${testResult.responseBody && typeof testResult.responseBody === 'object' ? `
                                         <div class="data-item" style="margin: 5px 0;">
                                             <span class="data-label">Response:</span>
@@ -1014,6 +1037,7 @@
                                             </span>
                                         </div>
                                         ` : ''}
+                                        `}
                                     </div>
                                     `;
                                 }).join('') : '<p style="color: #6c757d; font-style: italic;">No tests executed for this example</p>'}
@@ -1056,10 +1080,13 @@
                 '401': 'Unauthorized',
                 '403': 'Forbidden',
                 '404': 'Not Found',
+                '405': 'Method Not Allowed',
+                '409': 'Conflict',
                 '500': 'Internal Server Error',
                 '501': 'Not Implemented',
                 '502': 'Bad Gateway',
-                '503': 'Service Unavailable'
+                '503': 'Service Unavailable',
+                '504': 'Timeout'
             };
             return statusTexts[code] || '';
         }

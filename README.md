@@ -11,7 +11,7 @@ Automated tool to extract and test API endpoints from Global Payments developer 
   - Discovers every executable Global Payments cURL request in guide code blocks
   - Extracts code snippets in multiple languages (JSON, cURL)
   - Captures request structure (URL, headers, body)
-  - Extracts documented HTTP status codes
+  - Extracts documented HTTP status codes, and the endpoint-specific `error_code` values Global Payments documents for each non-2xx status
   - Handles multi-tab JSON structure (URL & QUERY, HEADERS, BODY)
   - Single-block extraction for cURL commands
 
@@ -19,7 +19,8 @@ Automated tool to extract and test API endpoints from Global Payments developer 
   - Generates fresh OAuth 2.0 tokens
   - Verifies sandbox authentication through the official Global Payments Node.js SDK
   - Tests multiple HTTP status code scenarios
-  - Validates response structure and format
+  - Validates both the HTTP status code *and* that the response body's `error_code`/payload actually matches what's documented for that scenario - a status code alone isn't treated as a pass
+  - Skips scenarios (e.g. 500/501/502/504) that can't be safely or deterministically reproduced against the sandbox, and reports them as such instead of a false failure
   - Records test results with timestamps
 
 - **Web Dashboard**: Interactive UI to view results
@@ -121,7 +122,8 @@ http://localhost:3000
    - cURL: Extract single complete command
 4. For guide pages, extract and label every GP API cURL request from Playwright-rendered `<pre>` blocks
 5. Parse each request's method, URL, headers, and body
-6. Test each parsed request independently, then run SDK verification as an additional stage
+6. Extract the documented response codes, then step through each one in the response-code selector to read the endpoint-specific `error_code` values Global Payments documents for it (the "possible values" list next to the `error_code` field)
+7. Test each parsed request independently against every documented status code, then run SDK verification as an additional stage
 
 ## API Endpoints
 
@@ -190,6 +192,11 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 - SDK verification authenticates with the official Node.js, PHP, and Java SDKs using the configured sandbox credentials
 - Each language runs as an isolated subprocess script (`sdk-verifiers/node/verify.js`, `sdk-verifiers/php/verify.php`, `sdk-verifiers/java/src/main/java/SdkVerifier.java`) that prints a single JSON result line, so the three SDKs stay independent of the Node.js server's own dependency versions
 - HTTP validation replays extracted requests because the SDK does not expose every documented endpoint as a generic operation
+- A status code scenario is only reported as "matched" when **both** the HTTP status and the response content line up with the documentation:
+  - For error scenarios (400/401/403/404/...), the response's `error_code` must be one of the values scraped for that endpoint + status (falling back to a generic reference table from Global Payments' [response definitions](https://developer.globalpayments.com/api/definitions/responses) if nothing endpoint-specific was found)
+  - For 2xx scenarios, the response body must not contain an error payload
+  - A coincidentally-correct HTTP status with an unrelated error body (e.g. a mistakenly-mangled URL returning 404 with a transaction-related error instead of `RESOURCE_NOT_FOUND`) is reported as a content mismatch, not a pass
+- Status codes that require a genuine downstream/server failure or a real duplicate-processing race (405, 409, 500, 501, 502, 503, 504) are recorded as **skipped** with an explanation, rather than being silently dropped or reused against the baseline request and reported as a false failure
 - SDK and HTTP results are reported independently
 
 ## Troubleshooting
