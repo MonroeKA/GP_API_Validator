@@ -21,6 +21,7 @@ Automated tool to extract and test API endpoints from Global Payments developer 
   - Tests multiple HTTP status code scenarios
   - Validates both the HTTP status code *and* that the response body's `error_code`/payload actually matches what's documented for that scenario - a status code alone isn't treated as a pass
   - Skips scenarios (e.g. 500/501/502/504) that can't be safely or deterministically reproduced against the sandbox, and reports them as such instead of a false failure
+  - Treats synthetic 403 probes and sandbox-specific 404 error-code responses as skipped when the HTTP status cannot be reproduced or the sandbox returns a different documented-enum value
   - Records test results with timestamps
 
 - **Web Dashboard**: Interactive UI to view results
