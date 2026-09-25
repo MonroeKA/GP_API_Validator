@@ -1,0 +1,127 @@
+name: GP API Validation
+
+# Validates the tracked Global Payments developer-portal endpoints (endpoints.json)
+# using the same Docker image (see Dockerfile) that a maintainer would use to run
+# this tool anywhere - so the CI environment matches local/reproducible usage.
+#
+# - schedule: nightly full run (extraction + live sandbox API test + SDK verification)
+#   so documentation drift is caught even when nothing in this repo changed.
+# - push to endpoints.json: validates newly-tracked URLs immediately.
+# - pull_request touching the extraction/testing engine: a fast, secret-free
+#   "extract-only" smoke test (no live API calls) so PRs from forks still get signal
+#   without needing sandbox credentials.
+# - workflow_dispatch: on-demand run, optionally against a single URL.
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  push:
+    branches: [develop, main]
+    paths:
+      - 'endpoints.json'
+  pull_request:
+    paths:
+      - 'lib/pipeline.js'
+      - 'cli.js'
+      - 'server.js'
+      - 'Dockerfile'
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'Single developer-portal URL to validate (blank = every URL in endpoints.json)'
+        required: false
+      extract_only:
+        description: 'Skip live sandbox API testing'
+        type: boolean
+        default: false
+
+concurrency:
+  group: gp-api-validation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  checks: write
+  issues: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Determine run mode
+        id: mode
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "cli_args=--extract-only" >> "$GITHUB_OUTPUT"
+            echo "needs_secrets=false" >> "$GITHUB_OUTPUT"
+          else
+            args=""
+            if [ -n "${{ github.event.inputs.url }}" ]; then
+              args="--url ${{ github.event.inputs.url }}"
+            fi
+            if [ "${{ github.event.inputs.extract_only }}" = "true" ]; then
+              args="$args --extract-only"
+            fi
+            echo "cli_args=$args" >> "$GITHUB_OUTPUT"
+            echo "needs_secrets=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build validator image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          tags: gp-api-validator:ci
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run GP API Validator
+        env:
+          GP_API_APP_ID: ${{ secrets.GP_API_APP_ID }}
+          GP_API_APP_KEY: ${{ secrets.GP_API_APP_KEY }}
+        run: |
+          mkdir -p results
+          docker run --rm \
+            -e GP_API_APP_ID \
+            -e GP_API_APP_KEY \
+            -e GP_API_ENVIRONMENT=sandbox \
+            -v "${{ github.workspace }}/results:/app/results" \
+            gp-api-validator:ci ${{ steps.mode.outputs.cli_args }} \
+            --out /app/results/report.json --junit /app/results/report.junit.xml
+
+      - name: Publish JUnit test report
+        if: always()
+        uses: dorny/test-reporter@v1
+        with:
+          name: GP API Validation Results
+          path: results/report.junit.xml
+          reporter: java-junit
+          fail-on-error: false
+
+      - name: Upload report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gp-api-validation-report
+          path: results/
+          retention-days: 30
+
+      - name: File an issue on scheduled-run failure
+        if: failure() && github.event_name == 'schedule'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `GP API Validation failed - ${new Date().toISOString().slice(0, 10)}`,
+              body: `The nightly [GP API Validation](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}) run found one or more documentation/API mismatches. See the workflow run and the \`gp-api-validation-report\` artifact for details.`,
+              labels: ['gp-api-validation', 'automated']
+            });
